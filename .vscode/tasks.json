@@ -1,0 +1,56 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "vite: dev",
+      "type": "shell",
+      // 先强制结束占用 1420 端口的旧进程（重复 F5 时上次的后台任务还在跑），再启动 Vite
+      "command": "powershell",
+      "args": [
+        "-NoProfile",
+        "-Command",
+        "Stop-Process -Id (Get-NetTCPConnection -LocalPort 1420 -State Listen -ErrorAction SilentlyContinue).OwningProcess -Force -ErrorAction SilentlyContinue; pnpm dev"
+      ],
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "vite",
+        "pattern": {
+          "regexp": "^$"
+        },
+        // background 让依赖本任务的环节在 Vite 就绪后才继续
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "VITE v",
+          "endsPattern": "Local:"
+        }
+      },
+      "presentation": {
+        "panel": "dedicated",
+        "reveal": "always"
+      }
+    },
+    {
+      "label": "rust: build-debug",
+      "type": "shell",
+      "command": "cargo",
+      "args": ["build", "--manifest-path", "src-tauri/Cargo.toml"],
+      "problemMatcher": ["$rustc"],
+      "group": "build"
+    },
+    {
+      // 调试启动的前置任务：dependsOn 默认按顺序执行，先等 Vite 就绪，再编译 Rust
+      "label": "tauri: pre-debug",
+      "dependsOn": ["vite: dev", "rust: build-debug"],
+      "problemMatcher": []
+    },
+    {
+      // 日常开发用（不挂调试器）：tauri CLI 自己拉起 Vite 和应用
+      "label": "tauri: dev",
+      "type": "shell",
+      "command": "pnpm",
+      "args": ["tauri", "dev"],
+      "isBackground": true,
+      "problemMatcher": []
+    }
+  ]
+}
