@@ -49,3 +49,9 @@ export interface DashboardTotals {
   spend: number;
   deals: number;
 }
+
+/** 巨量引擎开放平台应用凭证（设置页保存至本地 SQLite settings 表） */
+export interface OceanCredentials {
+  appId: string | null;
+  appSecret: string | null;
+}

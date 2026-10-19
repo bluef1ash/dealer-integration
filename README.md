@@ -18,9 +18,10 @@ pnpm build            # 仅构建前端（vue-tsc + vite build，产物在 dist/
 
 - [docs/spec/0001](docs/spec/0001-dealer-lead-ad-integration-v1.md)：v1 spec（GitHub issue #1）
 - [docs/adr/](docs/adr/)：关键决策（混合集成策略、技术栈、巨懂车取数方案）
+- [docs/databases.md](docs/databases.md)：本地数据库表结构
 - [GLOSSARY.md](GLOSSARY.md)：领域术语表
 - UI 方向：变体 B（顶部大字看板），原型存档于 `prototype/ui-v1` 分支
 
 ## 工单与进度
 
-见 GitHub Issues：#2（巨量开发者申请）、#3（巨懂车 spike）为人工前置任务，其余按依赖关系推进。
+见 GitHub Issues：#3（巨懂车 spike）为人工前置任务，其余按依赖关系推进。#2（巨量开发者申请）已完成关闭。

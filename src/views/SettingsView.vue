@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import DataState from '../components/DataState.vue';
+import OceanCredentialsCard from '../components/OceanCredentialsCard.vue';
 import { MOCK_STORES } from '../mocks';
 import type { FetchState as DataStateKind } from '../types';
 
@@ -10,6 +11,8 @@ const props = defineProps<{ state: DataStateKind }>();
   <section class="toolbar">
     <h1>设置</h1>
   </section>
+
+  <OceanCredentialsCard />
 
   <DataState :state="props.state">
     <div class="tblwrap">
@@ -34,7 +37,7 @@ const props = defineProps<{ state: DataStateKind }>();
         <button type="button" class="ghost">+ 授权巨量广告账户</button>
       </p>
       <p class="hint">巨量引擎授权：尚未配置（OAuth 授权后在此显示门店 ↔ 广告账户映射）</p>
-      <p class="hint">凭证保存于系统凭证库（Windows 凭据管理器 / macOS 钥匙串），数据库内无明文密码。</p>
+      <p class="hint">巨懂车账号密码与会话存系统凭证库（Windows 凭据管理器 / macOS 钥匙串）；巨量引擎 App ID / App Secret 保存于本地数据库。</p>
     </div>
   </DataState>
 </template>
