@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import type { DataState } from './types';
+import type { FetchState } from './types';
 import DashboardView from './views/DashboardView.vue';
 import LeadsView from './views/LeadsView.vue';
 import SettingsView from './views/SettingsView.vue';
@@ -14,11 +14,11 @@ const TABS: Array<{ key: Page; label: string }> = [
 const page = ref<Page>('dash');
 
 /** 演示控制：接真实数据后由采集/查询结果驱动，整个区块随之删除 */
-const STATES: DataState[] = ['ready', 'loading', 'empty', 'error'];
-const STATE_LABELS: Record<DataState, string> = {
+const STATES: FetchState[] = ['ready', 'loading', 'empty', 'error'];
+const STATE_LABELS: Record<FetchState, string> = {
   ready: '正常', loading: '加载中', empty: '空数据', error: '出错',
 };
-const dataState = ref<DataState>('ready');
+const dataState = ref<FetchState>('ready');
 function cycleState(): void {
   dataState.value = STATES[(STATES.indexOf(dataState.value) + 1) % STATES.length];
 }

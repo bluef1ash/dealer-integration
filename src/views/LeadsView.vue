@@ -2,7 +2,7 @@
 import { computed, ref } from 'vue';
 import DataState from '../components/DataState.vue';
 import { MOCK_LEADS } from '../mocks';
-import type { DataState as DataStateKind } from '../types';
+import type { FetchState as DataStateKind } from '../types';
 
 const props = defineProps<{ state: DataStateKind }>();
 
@@ -43,7 +43,7 @@ const filtered = computed(() =>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="l in filtered" :key="l.phone">
+          <tr v-for="l in filtered" :key="l.id">
             <td>{{ l.time }}</td>
             <td>{{ l.store }}</td>
             <td>{{ l.carModel }}</td>

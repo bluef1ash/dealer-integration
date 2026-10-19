@@ -1,5 +1,6 @@
-/** 数据加载状态：接真实数据前，各页以本状态驱动「空/加载/错误/正常」呈现 */
-export type DataState = 'loading' | 'empty' | 'error' | 'ready';
+/** 数据加载状态：接真实数据前，各页以本状态驱动「空/加载/错误/正常」呈现。
+ *  与 components/DataState.vue 同名会造成导入冲突，故类型名用 FetchState。 */
+export type FetchState = 'loading' | 'empty' | 'error' | 'ready';
 
 /** 门店汇总卡片（看板） */
 export interface StoreSummary {
@@ -10,7 +11,7 @@ export interface StoreSummary {
   account: string;
   /** 采集是否正常（会话是否有效） */
   collectOk: boolean;
-  /** 最近一次成功采集的描述，如「今天 10:32」 */
+  /** 最近一次成功采集的描述，如「今天 10:32」。TODO(#5)：接真实数据时改为时间戳，由视图格式化 */
   lastCollect: string;
   /** 今日线索量 */
   leads: number;
@@ -24,6 +25,8 @@ export interface StoreSummary {
 
 /** 线索明细行 */
 export interface Lead {
+  /** 线索 ID（巨懂车侧唯一标识）。行键用它，不用手机号 */
+  id: string;
   time: string;
   store: string;
   carModel: string;
@@ -45,12 +48,4 @@ export interface DashboardTotals {
   leads: number;
   spend: number;
   deals: number;
-}
-
-export function cpl(x: { leads: number; spend: number }): number {
-  return x.leads > 0 ? Math.round(x.spend / x.leads) : 0;
-}
-
-export function yuan(n: number): string {
-  return `¥${n.toLocaleString('zh-CN')}`;
 }

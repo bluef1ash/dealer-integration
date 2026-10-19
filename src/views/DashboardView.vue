@@ -2,10 +2,11 @@
 import { computed } from 'vue';
 import DataState from '../components/DataState.vue';
 import SparkLine from '../components/SparkLine.vue';
-import { MOCK_PLANS, MOCK_STORES, MOCK_TOTALS, shortName } from '../mocks';
-import { cpl, yuan, type DataState as DataStateKind } from '../types';
+import { MOCK_PLANS, MOCK_STORES, MOCK_TOTALS } from '../mocks';
+import type { FetchState } from '../types';
+import { cpl, shortName, yuan } from '../utils';
 
-const props = defineProps<{ state: DataStateKind }>();
+const props = defineProps<{ state: FetchState }>();
 
 const totals = computed(() => MOCK_TOTALS);
 const costPerLead = computed(() => cpl(totals.value));
@@ -64,12 +65,11 @@ const closeRate = computed(() =>
       <table>
         <thead>
           <tr>
-            <th>门店</th><th>投放计划</th><th>消耗</th><th>线索</th><th>线索成本</th><th>状态</th>
+            <th>投放计划</th><th>消耗</th><th>线索</th><th>线索成本</th><th>状态</th>
           </tr>
         </thead>
         <tbody>
           <tr v-for="p in MOCK_PLANS" :key="p.name">
-            <td>全部门店</td>
             <td>{{ p.name }}</td>
             <td>{{ yuan(p.spend) }}</td>
             <td>{{ p.leads }}</td>

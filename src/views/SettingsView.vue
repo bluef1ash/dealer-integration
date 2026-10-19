@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import DataState from '../components/DataState.vue';
 import { MOCK_STORES } from '../mocks';
-import type { DataState as DataStateKind } from '../types';
+import type { FetchState as DataStateKind } from '../types';
 
 const props = defineProps<{ state: DataStateKind }>();
 </script>

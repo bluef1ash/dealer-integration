@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import type { DataState } from '../types';
+import type { FetchState } from '../types';
 
 /**
  * 异步数据区的统一呈现：加载/空/错误三种状态各占一块，
  * ready 时渲染插槽内容。空态与错误态都给出下一步动作提示。
  */
-defineProps<{ state: DataState }>();
+defineProps<{ state: FetchState }>();
 </script>
 
 <template>

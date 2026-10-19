@@ -2,7 +2,7 @@
 
 ## 仓库
 
-早期项目：README 目前只是占位符，仓库中还没有源代码。`.gitignore` 面向 Rust/Cargo 项目（`target/`、rustfmt 备份、cargo-mutants 输出），因此一旦出现 `Cargo.toml`，预期以 `cargo build` / `cargo test` / `cargo clippy` / `cargo fmt` 作为常用命令。本仓库没有 JS/TS 工具链。
+桌面客户端（Tauri 2 + Rust + Vue 3 + TypeScript），整合巨懂车线索与巨量引擎广告报表。常用命令见 README「开发」节：`pnpm tauri dev` 本地开发、`pnpm tauri build` 出安装包、`pnpm typecheck` 类型检查、`cargo check`（src-tauri/，需平台系统依赖）。
 
 
 ## 代码编写硬规则
