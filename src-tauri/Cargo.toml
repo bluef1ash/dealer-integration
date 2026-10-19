@@ -1,0 +1,18 @@
+[package]
+name = "dealer-integration"
+version = "0.1.0"
+description = "经销商线索×广告投放整合桌面客户端"
+edition = "2021"
+rust-version = "1.77"
+
+[lib]
+name = "dealer_integration_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tauri = { version = "2", features = [] }
