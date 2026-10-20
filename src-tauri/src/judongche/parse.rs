@@ -54,6 +54,9 @@ pub struct LeadItem {
     pub intention_car: Kv,
     #[serde(default)]
     pub leads_time: i64,
+    /// 飞鱼侧线索 ID（导出表线索 ID 同源）
+    #[serde(default, rename = "feiyu_leads_id")]
+    pub feiyu_leads_id: String,
     #[serde(default)]
     pub extra: Extra,
 }
@@ -92,6 +95,7 @@ fn lead_item_to_row(item: &LeadItem) -> LeadRow {
         source_label: item.source_category.label.clone(),
         intention,
         leads_time: item.leads_time,
+        feiyu_leads_id: item.feiyu_leads_id.clone(),
         ad_id: item.extra.ad_id.clone(),
         promotion_id: item.extra.promotion_id.clone(),
         promotion_name: item.extra.promotion_name.clone(),

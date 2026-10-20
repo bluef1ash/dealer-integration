@@ -1,14 +1,25 @@
+pub mod collector;
+pub mod commands;
+pub mod credentials;
 pub mod db;
 pub mod error;
+pub mod export;
 pub mod ingest;
 pub mod judongche;
+pub mod login;
 pub mod models;
+pub mod ocean;
+pub mod query;
 pub mod repo;
+pub mod scheduler;
 pub mod settings;
+pub mod snapshot;
 
 use std::fs;
 
 use tauri::Manager;
+
+use commands::Clients;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -19,15 +30,31 @@ pub fn run() {
             fs::create_dir_all(&dir).expect("无法创建应用数据目录");
             let database = db::Db::open(&dir.join("dealer-integration.db")).expect("无法打开本地数据库");
             app.manage(database);
+            app.manage(Clients { jd: judongche::client::Client::new(), ocean: ocean::Client::new() });
+            scheduler::start(app.handle().clone());
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![ping])
+        .invoke_handler(tauri::generate_handler![
+            commands::list_stores,
+            commands::add_store,
+            commands::remove_store,
+            commands::get_collection_status,
+            commands::start_login,
+            commands::pull_now,
+            commands::get_leads,
+            commands::get_status_options,
+            commands::get_dashboard,
+            commands::export_leads,
+            commands::get_ocean_credentials,
+            commands::save_ocean_credentials,
+            commands::start_ocean_auth,
+            commands::list_ad_accounts,
+            commands::set_store_mapping,
+            commands::get_store_ad_accounts,
+            commands::run_snapshot,
+            commands::set_snapshot_hour,
+            commands::get_snapshot_hour,
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
-}
-
-/// IPC 冒烟命令：前端启动时调用一次，验证 Tauri 桥可用
-#[tauri::command]
-fn ping(name: &str) -> String {
-    format!("pong: {name}")
 }

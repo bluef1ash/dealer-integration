@@ -17,13 +17,25 @@ impl Db {
         let conn = Connection::open(path)?;
         conn.pragma_update(None, "journal_mode", "WAL")?;
         conn.execute_batch(SCHEMA)?;
+        Self::migrate(&conn);
         Ok(Self { conn: Mutex::new(conn) })
+    }
+
+    /// 渐进迁移：已建库补列（CREATE TABLE IF NOT EXISTS 不会更新既有表）
+    fn migrate(conn: &Connection) {
+        let add_column = |sql: &str| {
+            // 列已存在时 ALTER 报错，忽略即可
+            let _ = conn.execute_batch(sql);
+        };
+        add_column("ALTER TABLE leads ADD COLUMN feiyu_leads_id TEXT NOT NULL DEFAULT ''");
+        let _ = conn.execute_batch("CREATE INDEX IF NOT EXISTS idx_leads_feiyu ON leads(feiyu_leads_id)");
     }
 
     /// 内存库：测试与一次性工具用
     pub fn open_in_memory() -> Self {
         let conn = Connection::open_in_memory().expect("打开内存库");
         conn.execute_batch(SCHEMA).expect("执行建表");
+        Self::migrate(&conn);
         Self { conn: Mutex::new(conn) }
     }
 
@@ -31,6 +43,11 @@ impl Db {
     pub fn with<T>(&self, f: impl FnOnce(&Connection) -> AppResult<T>) -> AppResult<T> {
         let conn = self.conn.lock().map_err(|_| AppError::Message("数据库连接锁中毒".into()))?;
         f(&conn)
+    }
+
+    /// 同上，但闭包返回 rusqlite::Result（自动转 AppError）
+    pub fn with_sql<T>(&self, f: impl FnOnce(&Connection) -> rusqlite::Result<T>) -> AppResult<T> {
+        self.with(|conn| f(conn).map_err(AppError::Db))
     }
 }
 
@@ -61,6 +78,7 @@ CREATE TABLE IF NOT EXISTS leads (
     source_label   TEXT NOT NULL DEFAULT '',
     intention      TEXT NOT NULL DEFAULT '',
     leads_time     INTEGER NOT NULL,
+    feiyu_leads_id TEXT NOT NULL DEFAULT '',
     ad_id          TEXT NOT NULL DEFAULT '',
     promotion_id   TEXT NOT NULL DEFAULT '',
     promotion_name TEXT NOT NULL DEFAULT '',

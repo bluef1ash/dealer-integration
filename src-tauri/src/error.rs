@@ -14,6 +14,8 @@ pub enum AppError {
     Excel(String),
     #[error("IO 错误: {0}")]
     Io(#[from] std::io::Error),
+    #[error("Tauri 错误: {0}")]
+    Tauri(#[from] tauri::Error),
     #[error("{0}")]
     Message(String),
 }

@@ -1,6 +1,6 @@
 //! 线索与报表仓储：入库统一走 upsert，幂等由 ON CONFLICT 保证。
 
-use rusqlite::Connection;
+use rusqlite::{Connection, OptionalExtension};
 
 use crate::error::AppResult;
 use crate::models::{AdReportRow, LeadRow, PlanReportRow};
@@ -12,8 +12,9 @@ pub fn upsert_leads(conn: &Connection, store_id: i64, rows: &[LeadRow]) -> AppRe
     for r in rows {
         n += tx.execute(
             "INSERT INTO leads (leads_id, store_id, phone, name, status_key, status_label,
-                                source_label, intention, leads_time, ad_id, promotion_id, promotion_name, raw)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)
+                                source_label, intention, leads_time, feiyu_leads_id,
+                                ad_id, promotion_id, promotion_name, raw)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)
              ON CONFLICT(leads_id) DO UPDATE SET
                 phone = excluded.phone,
                 name = excluded.name,
@@ -22,6 +23,7 @@ pub fn upsert_leads(conn: &Connection, store_id: i64, rows: &[LeadRow]) -> AppRe
                 source_label = excluded.source_label,
                 intention = excluded.intention,
                 leads_time = excluded.leads_time,
+                feiyu_leads_id = excluded.feiyu_leads_id,
                 ad_id = excluded.ad_id,
                 promotion_id = excluded.promotion_id,
                 promotion_name = excluded.promotion_name,
@@ -36,6 +38,7 @@ pub fn upsert_leads(conn: &Connection, store_id: i64, rows: &[LeadRow]) -> AppRe
                 r.source_label,
                 r.intention,
                 r.leads_time,
+                r.feiyu_leads_id,
                 r.ad_id,
                 r.promotion_id,
                 r.promotion_name,
@@ -45,6 +48,16 @@ pub fn upsert_leads(conn: &Connection, store_id: i64, rows: &[LeadRow]) -> AppRe
     }
     tx.commit()?;
     Ok(n)
+}
+
+/// 快照合并键：导出表的线索 ID 即列表接口的 feiyu_leads_id（issue #12 口径），
+/// 命中则沿用列表主键，避免广告线索双份
+pub fn find_leads_id_by_feiyu(conn: &Connection, feiyu_leads_id: &str) -> AppResult<Option<String>> {
+    let mut stmt = conn.prepare("SELECT leads_id FROM leads WHERE feiyu_leads_id = ?1")?;
+    let found = stmt
+        .query_row([feiyu_leads_id], |r| r.get::<_, String>(0))
+        .optional()?;
+    Ok(found)
 }
 
 pub fn upsert_ad_reports(conn: &Connection, rows: &[AdReportRow]) -> AppResult<usize> {
@@ -92,6 +105,13 @@ pub fn ensure_ad_account(conn: &Connection, id: &str, alias: &str) -> AppResult<
         rusqlite::params![id, alias, crate::db::now()],
     )?;
     Ok(())
+}
+
+/// 全部广告账户 ID（报表拉取范围）
+pub fn ad_account_ids(conn: &Connection) -> AppResult<Vec<String>> {
+    let mut stmt = conn.prepare("SELECT id FROM ad_accounts ORDER BY id")?;
+    let rows = stmt.query_map([], |r| r.get(0))?.collect::<Result<Vec<_>, _>>()?;
+    Ok(rows)
 }
 
 #[cfg(test)]

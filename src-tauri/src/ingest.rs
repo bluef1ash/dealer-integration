@@ -4,7 +4,6 @@
 use rusqlite::Connection;
 
 use crate::error::{AppError, AppResult};
-use crate::models::LeadRow;
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct IngestStats {
@@ -23,6 +22,7 @@ pub fn ingest_list_response(conn: &Connection, store_id: i64, body: &str) -> App
 mod tests {
     use super::*;
     use crate::db::Db;
+    use crate::models::LeadRow;
 
     const FIXTURE: &str = concat!(
         env!("CARGO_MANIFEST_DIR"),

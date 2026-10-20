@@ -44,6 +44,9 @@ pub struct LeadRow {
     /// 留资时间 unix 秒
     #[serde(default)]
     pub leads_time: i64,
+    /// 飞鱼侧线索 ID（导出表「线索ID」列即此值；跨表合并键，见 issue #12 口径）
+    #[serde(default)]
+    pub feiyu_leads_id: String,
     #[serde(default)]
     pub ad_id: String,
     #[serde(default)]
@@ -116,8 +119,30 @@ pub struct PlanLine {
     pub state: &'static str,
 }
 
+/// 线索明细行（出库：列表/导出用，附带门店名）
+#[derive(Debug, Clone, Serialize)]
+pub struct LeadDetail {
+    pub leads_id: String,
+    pub store_id: i64,
+    pub store_name: String,
+    pub phone: String,
+    pub name: String,
+    pub status_label: String,
+    pub source_label: String,
+    pub intention: String,
+    pub leads_time: i64,
+    pub promotion_name: String,
+}
+
+/// 分页结果
+#[derive(Debug, Serialize)]
+pub struct LeadPage {
+    pub total: i64,
+    pub rows: Vec<LeadDetail>,
+}
+
 /// 巨量引擎账户层级日报行
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Default)]
 pub struct AdReportRow {
     pub ad_account_id: String,
     /// YYYY-MM-DD
@@ -133,7 +158,7 @@ pub struct AdReportRow {
 }
 
 /// 巨量引擎计划层级日报行
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Default)]
 pub struct PlanReportRow {
     pub ad_account_id: String,
     pub promotion_id: String,
