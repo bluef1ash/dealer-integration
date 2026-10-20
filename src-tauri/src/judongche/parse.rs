@@ -1,0 +1,130 @@
+//! 巨懂车响应解析：接口 JSON → 领域行（LeadRow）。字段全部 `#[serde(default)]`，
+//! 平台加字段不炸、缺字段落空值——解析只取客户端用到的列。
+
+use serde::{Deserialize, Serialize};
+
+use crate::error::{AppError, AppResult};
+use crate::models::LeadRow;
+
+/// 平台通用 KV 结构（{key, label}）
+#[derive(Debug, Deserialize, Serialize, Default)]
+pub struct Kv {
+    #[serde(default)]
+    pub key: String,
+    #[serde(default)]
+    pub label: String,
+}
+
+#[derive(Debug, Deserialize, Default)]
+pub struct ListResponse {
+    #[serde(default)]
+    pub status: i64,
+    #[serde(default)]
+    pub message: String,
+    #[serde(default)]
+    pub data: ListData,
+}
+
+#[derive(Debug, Deserialize, Default)]
+pub struct ListData {
+    #[serde(default)]
+    pub list: Vec<LeadItem>,
+    #[serde(default)]
+    pub total: i64,
+    /// 游标分页："<leads_id>#<leads_time>"；空串表示无下一页
+    #[serde(rename = "next_cursor", default)]
+    pub next_cursor: String,
+}
+
+#[derive(Debug, Deserialize, Serialize, Default)]
+pub struct LeadItem {
+    #[serde(default)]
+    pub leads_id: String,
+    #[serde(default)]
+    pub name: String,
+    #[serde(default)]
+    pub phone: String,
+    #[serde(default)]
+    pub status: Kv,
+    #[serde(rename = "source_category", default)]
+    pub source_category: Kv,
+    #[serde(rename = "intention_series", default)]
+    pub intention_series: Kv,
+    #[serde(rename = "intention_car", default)]
+    pub intention_car: Kv,
+    #[serde(default)]
+    pub leads_time: i64,
+    #[serde(default)]
+    pub extra: Extra,
+}
+
+#[derive(Debug, Deserialize, Serialize, Default)]
+pub struct Extra {
+    #[serde(rename = "ad_id", default)]
+    pub ad_id: String,
+    #[serde(rename = "promotion_id", default)]
+    pub promotion_id: String,
+    #[serde(rename = "promotion_name", default)]
+    pub promotion_name: String,
+}
+
+/// 列表接口响应文本 → 领域行；业务失败（code 非 0）在解析阶段即报错
+pub fn lead_rows_from_list(body: &str) -> AppResult<Vec<LeadRow>> {
+    let resp: ListResponse = serde_json::from_str(body).map_err(|e| AppError::Message(format!("列表响应解析失败: {e}")))?;
+    if resp.status != 0 {
+        return Err(AppError::remote(resp.status, &resp.message));
+    }
+    Ok(resp.data.list.iter().map(lead_item_to_row).collect())
+}
+
+fn lead_item_to_row(item: &LeadItem) -> LeadRow {
+    let intention = [item.intention_series.label.as_str(), item.intention_car.label.as_str()]
+        .into_iter()
+        .filter(|s| !s.is_empty())
+        .collect::<Vec<_>>()
+        .join(" ");
+    LeadRow {
+        leads_id: item.leads_id.clone(),
+        phone: item.phone.clone(),
+        name: item.name.clone(),
+        status_key: item.status.key.clone(),
+        status_label: item.status.label.clone(),
+        source_label: item.source_category.label.clone(),
+        intention,
+        leads_time: item.leads_time,
+        ad_id: item.extra.ad_id.clone(),
+        promotion_id: item.extra.promotion_id.clone(),
+        promotion_name: item.extra.promotion_name.clone(),
+        raw: serde_json::to_value(item).unwrap_or(serde_json::Value::Null),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const FIXTURE: &str = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/tests/fixtures/judongche/leads_list_page1.json"
+    );
+
+    #[test]
+    fn fixture_parses_to_ten_rows_with_expected_fields() {
+        let body = std::fs::read_to_string(FIXTURE).unwrap();
+        let rows = lead_rows_from_list(&body).unwrap();
+        assert_eq!(rows.len(), 10);
+        let first = rows.iter().find(|r| r.leads_id == "1115047139").unwrap();
+        assert_eq!(first.phone, "13800001001");
+        assert_eq!(first.status_label, "未联系");
+        assert_eq!(first.intention, "iCAR超级V23 401两驱进阶版");
+        let ad_direct = rows.iter().find(|r| r.leads_id == "1109298389").unwrap();
+        assert_eq!(ad_direct.promotion_id, "7691306192144973887");
+        assert_eq!(ad_direct.source_label, "私聊线索");
+    }
+
+    #[test]
+    fn business_error_is_surfaced() {
+        let err = lead_rows_from_list(r#"{"status":1,"message":"未提供应用实例id"}"#).unwrap_err();
+        assert!(err.to_string().contains("未提供应用实例id"));
+    }
+}

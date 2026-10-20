@@ -1,0 +1,130 @@
+//! 数据库连接与 schema：全库唯一连接（Mutex 串行化），启动时执行幂等建表。
+
+use std::path::Path;
+use std::sync::Mutex;
+
+use rusqlite::Connection;
+
+use crate::error::{AppError, AppResult};
+
+pub struct Db {
+    conn: Mutex<Connection>,
+}
+
+impl Db {
+    /// 打开（不存在则创建）库文件并执行建表
+    pub fn open(path: &Path) -> rusqlite::Result<Self> {
+        let conn = Connection::open(path)?;
+        conn.pragma_update(None, "journal_mode", "WAL")?;
+        conn.execute_batch(SCHEMA)?;
+        Ok(Self { conn: Mutex::new(conn) })
+    }
+
+    /// 内存库：测试与一次性工具用
+    pub fn open_in_memory() -> Self {
+        let conn = Connection::open_in_memory().expect("打开内存库");
+        conn.execute_batch(SCHEMA).expect("执行建表");
+        Self { conn: Mutex::new(conn) }
+    }
+
+    /// 串行化访问连接；锁中毒视为不可恢复错误
+    pub fn with<T>(&self, f: impl FnOnce(&Connection) -> AppResult<T>) -> AppResult<T> {
+        let conn = self.conn.lock().map_err(|_| AppError::Message("数据库连接锁中毒".into()))?;
+        f(&conn)
+    }
+}
+
+pub fn now() -> i64 {
+    chrono::Utc::now().timestamp()
+}
+
+const SCHEMA: &str = r#"
+CREATE TABLE IF NOT EXISTS settings (
+    key   TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS stores (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    name       TEXT NOT NULL,
+    account    TEXT NOT NULL UNIQUE,
+    created_at INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS leads (
+    leads_id       TEXT PRIMARY KEY,
+    store_id       INTEGER NOT NULL REFERENCES stores(id),
+    phone          TEXT NOT NULL DEFAULT '',
+    name           TEXT NOT NULL DEFAULT '',
+    status_key     TEXT NOT NULL DEFAULT '',
+    status_label   TEXT NOT NULL DEFAULT '',
+    source_label   TEXT NOT NULL DEFAULT '',
+    intention      TEXT NOT NULL DEFAULT '',
+    leads_time     INTEGER NOT NULL,
+    ad_id          TEXT NOT NULL DEFAULT '',
+    promotion_id   TEXT NOT NULL DEFAULT '',
+    promotion_name TEXT NOT NULL DEFAULT '',
+    raw            TEXT NOT NULL DEFAULT '{}'
+);
+CREATE INDEX IF NOT EXISTS idx_leads_store_time ON leads(store_id, leads_time);
+CREATE INDEX IF NOT EXISTS idx_leads_time ON leads(leads_time);
+
+CREATE TABLE IF NOT EXISTS store_pull_state (
+    store_id        INTEGER PRIMARY KEY REFERENCES stores(id),
+    last_success_at INTEGER,
+    last_attempt_at INTEGER,
+    last_error      TEXT NOT NULL DEFAULT '',
+    backfilled      INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS ad_accounts (
+    id         TEXT PRIMARY KEY,
+    alias      TEXT NOT NULL DEFAULT '',
+    created_at INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS store_ad_accounts (
+    store_id      INTEGER NOT NULL REFERENCES stores(id),
+    ad_account_id TEXT NOT NULL REFERENCES ad_accounts(id),
+    PRIMARY KEY (store_id, ad_account_id)
+);
+
+CREATE TABLE IF NOT EXISTS ad_reports_daily (
+    ad_account_id TEXT NOT NULL REFERENCES ad_accounts(id),
+    date          TEXT NOT NULL,
+    spend         REAL NOT NULL DEFAULT 0,
+    impressions   INTEGER NOT NULL DEFAULT 0,
+    clicks        INTEGER NOT NULL DEFAULT 0,
+    conversions   INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (ad_account_id, date)
+);
+
+CREATE TABLE IF NOT EXISTS plan_reports_daily (
+    ad_account_id  TEXT NOT NULL REFERENCES ad_accounts(id),
+    promotion_id   TEXT NOT NULL,
+    promotion_name TEXT NOT NULL DEFAULT '',
+    date           TEXT NOT NULL,
+    spend          REAL NOT NULL DEFAULT 0,
+    conversions    INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (ad_account_id, promotion_id, date)
+);
+
+CREATE TABLE IF NOT EXISTS snapshots (
+    date        TEXT PRIMARY KEY,
+    imported_at INTEGER NOT NULL,
+    leads_seen  INTEGER NOT NULL DEFAULT 0
+);
+"#;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// 建表脚本可重复执行（升级路径幂等）
+    #[test]
+    fn schema_is_idempotent() {
+        let conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch(SCHEMA).unwrap();
+        conn.execute_batch(SCHEMA).unwrap();
+    }
+}
