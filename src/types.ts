@@ -1,57 +1,123 @@
-/** 数据加载状态：接真实数据前，各页以本状态驱动「空/加载/错误/正常」呈现。
+/** 领域类型：与 src-tauri/src/models.rs 的 serde 结构一一对应 */
+
+/** 数据加载状态：各页以本状态驱动「空/加载/错误/正常」呈现。
  *  与 components/DataState.vue 同名会造成导入冲突，故类型名用 FetchState。 */
 export type FetchState = 'loading' | 'empty' | 'error' | 'ready';
 
-/** 门店汇总卡片（看板） */
-export interface StoreSummary {
-  id: string;
-  /** 完整门店名，如「星辰汽车 · 城东店」 */
+/** 门店（管理单位，每店一个巨懂车账号） */
+export interface Store {
+  id: number;
   name: string;
   /** 巨懂车账号标识（手机号） */
   account: string;
-  /** 采集是否正常（会话是否有效） */
-  collectOk: boolean;
-  /** 最近一次成功采集的描述，如「今天 10:32」。TODO(#5)：接真实数据时改为时间戳，由视图格式化 */
-  lastCollect: string;
-  /** 今日线索量 */
-  leads: number;
-  /** 今日广告消耗（元） */
-  spend: number;
-  /** 今日已成交 */
-  deals: number;
-  /** 近 14 天线索量走势（sparkline） */
-  trend: number[];
 }
 
-/** 线索明细行 */
-export interface Lead {
-  /** 线索 ID（巨懂车侧唯一标识）。行键用它，不用手机号 */
-  id: string;
-  time: string;
-  store: string;
-  carModel: string;
+/** 门店采集状态（设置页 + 过期角标） */
+export interface StoreStatus {
+  store: Store;
+  /** 最近成功采集 unix 秒；null 表示从未成功 */
+  last_success_at: number | null;
+  last_error: string;
+  backfilled: boolean;
+  has_session: boolean;
+}
+
+/** 单店拉取结果 */
+export interface PullOutcome {
+  store_id: number;
+  ok: boolean;
+  ingested: number;
+  session_expired: boolean;
+  error: string;
+}
+
+/** 线索明细行（出库：列表/导出用，附带门店名） */
+export interface LeadDetail {
+  leads_id: string;
+  store_id: number;
+  store_name: string;
   phone: string;
-  status: '未跟进' | '已跟进' | '已到店' | '已成交' | '无效线索';
-  sourcePlan: string;
-}
-
-/** 投放计划行 */
-export interface PlanRow {
   name: string;
-  spend: number;
-  leads: number;
-  state: '投放中' | '已暂停';
+  status_label: string;
+  source_label: string;
+  intention: string;
+  /** 留资时间 unix 秒 */
+  leads_time: number;
+  promotion_name: string;
 }
 
-/** 看板聚合（主数字 + 辅助指标） */
-export interface DashboardTotals {
+export interface LeadPage {
+  total: number;
+  rows: LeadDetail[];
+}
+
+/** 线索筛选（page 从 0 计；page_size=0 不分页由后端导出用） */
+export interface LeadsFilter {
+  store_id: number | null;
+  status: string | null;
+  from: number | null;
+  to: number | null;
+  page: number;
+  page_size: number;
+}
+
+/** 看板时间范围（对应 Rust Range 的 adjacently tagged serde） */
+export type Range = { kind: 'Today' } | { kind: 'Last7' } | { kind: 'Last30' } | { kind: 'Custom'; value: { from: number; to: number } };
+
+/** 看板门店卡片 */
+export interface StoreCard {
+  store: Store;
   leads: number;
   spend: number;
+  /** 近 14 天线索量走势，末位为今天 */
+  trend: number[];
+  last_success_at: number | null;
+  /** 会话有效性；null 表示从未拉取 */
+  session_ok: boolean | null;
+}
+
+/** 投放计划扁平表行 */
+export interface PlanLine {
+  promotion_id: string;
+  promotion_name: string;
+  spend: number;
+  leads: number;
+  state: string;
+}
+
+/** 看板聚合 */
+export interface Dashboard {
+  spend: number;
+  cpl: number;
+  leads: number;
   deals: number;
+  store_cards: StoreCard[];
+  plans: PlanLine[];
+}
+
+/** 巨量广告账户（OAuth 授权返回的 advertiser） */
+export interface AdAccount {
+  id: string;
+  alias: string;
 }
 
 /** 巨量引擎开放平台应用凭证（设置页保存至本地 SQLite settings 表） */
 export interface OceanCredentials {
   appId: string | null;
   appSecret: string | null;
+}
+
+/** WebView 登录结果事件（login://result） */
+export interface LoginEvent {
+  store_id: number;
+  ok: boolean;
+  message: string;
+}
+
+/** 对账快照单店结果 */
+export interface SnapshotOutcome {
+  store_id: number;
+  ok: boolean;
+  seen: number;
+  error: string;
 }

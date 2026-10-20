@@ -9,3 +9,11 @@
 否决的备选：Playwright 无头自动化（全自动但易触发风控）；纯 HTTP 重放登录（需逆向验证码与签名，最脆）；高频自动导出（每小时产生导出记录，污染人工使用的「导出记录」、易撞导出配额、行为特征显眼）。
 
 实现期需验证（按优先级）：① 列表接口带会话 cookie 直调是否被签名拦截——这是主路径成立与否的关键，写正式代码前先做 spike；② 导出频率限制、「导出记录」保留条数、生成文件的有效期。
+
+## 验证结论（2026-10-20 spike，issue #3）
+
+① 主路径**成立**：列表接口（`/motor/crm_wb/leads/scan/list`）与导出链路均**无签名参数**（无 msToken/X-Bogus）；最小必要集合 = 整罐会话 cookie + content-type + UA + `jdc-saas-header-app-id`（固定值）。仅 passport `sessionid` 不够（code 10014），CRM 层有独立会话 cookie——WebView 捕获必须保留整个 cookie 罐。
+
+② 导出为异步三段式：`async_export` 提交任务 → `task/instance/list?scene=105` 轮询 → `task/crm_data/export` 按 task_id 直出 xlsx 字节流。触发时平台弹「风险提示」确认框，导出记录跨天保留——每日对账的定位得到实证。
+
+③ **口径修正**：原文「入库按线索 ID 去重合并」不精确——导出表的「线索ID」列是飞鱼线索 ID（19 位），与列表接口 `leads_id`（约 10 位）**不是同一 ID 空间**。快照合并须先按 `feiyu_leads_id` 找回列表主键（实现于 `snapshot::reconcile`），否则广告线索会双份。
