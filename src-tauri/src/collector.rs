@@ -13,6 +13,11 @@ use std::time::Duration;
 pub const PAGE_SIZE: u32 = 50;
 const MAX_PAGES: u32 = 200;
 
+/// 拉取窗口口径：已回填的店重拉近 7 天覆盖状态变更，未回填的走 90 天首次回填（spec #10）
+pub fn window_days_for(backfilled: bool) -> i64 {
+    if backfilled { 7 } else { 90 }
+}
+
 /// 会话失效特征（spike 实测 code 10014）
 pub fn is_session_error(err: &AppError) -> bool {
     let text = err.to_string();
@@ -93,7 +98,14 @@ pub async fn pull_ocean_reports(
     for level in ["ADVERTISER_AD_DAY", "AD_AD_DAY"] {
         let mut page = 1i64;
         loop {
-            let data = client.fetch_report(access_token, level, &from_date, &to_date, &advertiser_ids, page).await?;
+            let query = crate::ocean::ReportQuery {
+                data_level: level,
+                from_date: from_date.clone(),
+                to_date: to_date.clone(),
+                advertiser_ids: advertiser_ids.clone(),
+                page,
+            };
+            let data = client.fetch_report(access_token, &query).await?;
             let (ads, plans) = crate::ocean::parse::parse_report_response(&data)?;
             let batch = ads.len() + plans.len();
             total += db.with(|conn| crate::ocean::ingest_reports(conn, &ads, &plans))?;

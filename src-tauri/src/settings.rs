@@ -7,6 +7,8 @@ const KEY_APP_ID: &str = "ocean.app_id";
 const KEY_APP_SECRET: &str = "ocean.app_secret";
 /// 对账快照触发小时（0-23），设置页可改
 pub const KEY_SNAPSHOT_HOUR: &str = "snapshot.hour";
+/// 巨量 OAuth token 过期时间（unix 秒）
+pub const KEY_OCEAN_TOKEN_EXPIRES: &str = "ocean.token.expires_at";
 
 /// 巨量引擎开放平台应用凭证（设置页维护；None 表示从未保存过）
 #[derive(Debug, Serialize)]

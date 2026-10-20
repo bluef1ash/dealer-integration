@@ -350,6 +350,24 @@ mod tests {
     }
 
     #[test]
+    fn dashboard_seven_and_thirty_day_ranges() {
+        let db = Db::open_in_memory();
+        seed(&db);
+        db.with(|conn| {
+            // 近7天：L1/L2/L4（今日）+ L3（3天前）；消耗 100+50=150
+            let d7 = dashboard(conn, &Range::Last7, None)?;
+            assert_eq!(d7.leads, 4);
+            assert_eq!(d7.spend, 150.0);
+            // 近30天：同近7天（L5 在 40 天前，依旧排除）
+            let d30 = dashboard(conn, &Range::Last30, None)?;
+            assert_eq!(d30.leads, 4);
+            assert_eq!(d30.spend, 150.0);
+            Ok(())
+        })
+        .unwrap();
+    }
+
+    #[test]
     fn status_options_are_distinct_and_sorted() {
         let db = Db::open_in_memory();
         seed(&db);

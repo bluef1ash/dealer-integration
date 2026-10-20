@@ -41,6 +41,15 @@ pub struct Client {
     http: reqwest::Client,
 }
 
+/// 报表拉取请求参数（原先六个结伴参数收拢于此）
+pub struct ReportQuery {
+    pub data_level: &'static str,
+    pub from_date: String,
+    pub to_date: String,
+    pub advertiser_ids: Vec<String>,
+    pub page: i64,
+}
+
 impl Client {
     pub fn new() -> Self {
         Self { http: reqwest::Client::new() }
@@ -70,16 +79,7 @@ impl Client {
     }
 
     /// 拉取一页报表（data_level：账户=ADVERTISER_AD_DAY，计划=AD_AD_DAY）
-    #[allow(clippy::too_many_arguments)]
-    pub async fn fetch_report(
-        &self,
-        access_token: &str,
-        data_level: &str,
-        from_date: &str,
-        to_date: &str,
-        advertiser_ids: &[String],
-        page: i64,
-    ) -> AppResult<String> {
+    pub async fn fetch_report(&self, access_token: &str, query: &ReportQuery) -> AppResult<String> {
         #[derive(Deserialize)]
         struct Envelope {
             #[serde(default)]
@@ -90,13 +90,13 @@ impl Client {
             data: serde_json::Value,
         }
         let body = serde_json::json!({
-            "data_level": data_level,
-            "start_date": from_date,
-            "end_date": to_date,
+            "data_level": query.data_level,
+            "start_date": query.from_date,
+            "end_date": query.to_date,
             "fields": ["advertiser_id", "promotion_id", "promotion_name", "ad_id", "ad_name",
                        "stat_time_day", "spend", "impression", "click", "conversion"],
-            "filter": { "advertiser_ids": advertiser_ids },
-            "page": page,
+            "filter": { "advertiser_ids": query.advertiser_ids },
+            "page": query.page,
             "page_size": 200,
         });
         let text = self

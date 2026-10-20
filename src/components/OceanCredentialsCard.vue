@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
-import { invoke } from '@tauri-apps/api/core';
-import type { OceanCredentials } from '../types';
+import { api } from '../api';
 
 const appId = ref('');
 const appSecret = ref('');
@@ -14,7 +13,7 @@ const justSaved = ref(false);
 
 onMounted(async () => {
   try {
-    const c = await invoke<OceanCredentials>('get_ocean_credentials');
+    const c = await api.getOceanCredentials();
     appId.value = c.appId ?? '';
     appSecret.value = c.appSecret ?? '';
     configured.value = true;
@@ -34,7 +33,7 @@ async function save() {
   }
   saving.value = true;
   try {
-    await invoke('save_ocean_credentials', { appId: id, appSecret: secret });
+    await api.saveOceanCredentials(id, secret);
     configured.value = true;
     justSaved.value = true;
   } catch (e) {

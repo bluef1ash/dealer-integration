@@ -109,12 +109,12 @@ pub async fn pull_now(
     };
     let mut outcomes = Vec::new();
     for store in stores {
-        let backfill = db
-            .with(|conn| Ok(!repo::stores::pull_state(conn, store.id)?.backfilled))
+        let backfilled = db
+            .with(|conn| Ok(repo::stores::pull_state(conn, store.id)?.backfilled))
             .map_err(err_string)?;
-        let days = if backfill { 90 } else { 7 };
+        let days = collector::window_days_for(backfilled);
         let outcome = collector::pull_store(&db, &clients.jd, &store, days).await;
-        if outcome.ok && backfill {
+        if outcome.ok && !backfilled {
             db.with(|conn| repo::stores::mark_backfilled(conn, store.id)).map_err(err_string)?;
         }
         outcomes.push(outcome);
@@ -208,7 +208,7 @@ pub async fn start_ocean_auth(
         .map_err(err_string)?;
     credentials::save_ocean_tokens(&tokens.access_token, &tokens.refresh_token).map_err(err_string)?;
     let expires_at = crate::db::now() + tokens.expires_in;
-    db.with_sql(|conn| settings::save_setting(conn, "ocean.token.expires_at", &expires_at.to_string()))
+    db.with_sql(|conn| settings::save_setting(conn, settings::KEY_OCEAN_TOKEN_EXPIRES, &expires_at.to_string()))
         .map_err(err_string)?;
 
     let accounts: Vec<AdAccount> = tokens
@@ -241,31 +241,13 @@ pub fn list_ad_accounts(db: State<'_, Db>) -> Result<Vec<AdAccount>, String> {
 /// 门店 ↔ 广告账户映射（多对多）
 #[tauri::command]
 pub fn set_store_mapping(db: State<'_, Db>, store_id: i64, ad_account_id: String, enable: bool) -> Result<(), String> {
-    db.with(|conn| {
-        if enable {
-            conn.execute(
-                "INSERT OR IGNORE INTO store_ad_accounts (store_id, ad_account_id) VALUES (?1, ?2)",
-                rusqlite::params![store_id, ad_account_id],
-            )?;
-        } else {
-            conn.execute(
-                "DELETE FROM store_ad_accounts WHERE store_id = ?1 AND ad_account_id = ?2",
-                rusqlite::params![store_id, ad_account_id],
-            )?;
-        }
-        Ok(())
-    })
-    .map_err(err_string)
+    db.with(|conn| repo::stores::set_mapping(conn, store_id, &ad_account_id, enable))
+        .map_err(err_string)
 }
 
 #[tauri::command]
 pub fn get_store_ad_accounts(db: State<'_, Db>, store_id: i64) -> Result<Vec<String>, String> {
-    db.with(|conn| {
-        let mut stmt = conn.prepare("SELECT ad_account_id FROM store_ad_accounts WHERE store_id = ?1")?;
-        let rows = stmt.query_map([store_id], |r| r.get(0))?.collect::<Result<Vec<_>, _>>()?;
-        Ok(rows)
-    })
-    .map_err(err_string)
+    db.with(|conn| repo::stores::mapping_account_ids(conn, store_id)).map_err(err_string)
 }
 
 // ---------- 对账快照（issue #12） ----------
@@ -337,8 +319,7 @@ async fn run_store_snapshot(
             }
         }
     }
-    let task = task.ok_or_else(|| AppError::Message("导出任务未在 60 秒内完成".into()))?;
-    let _ = task;
+    task.ok_or_else(|| AppError::Message("导出任务未在 60 秒内完成".into()))?;
     let bytes = jd.download_export(&cookie, &task_id).await?;
     let path = dir.join(format!("{today}-{}.xlsx", store.id));
     std::fs::write(&path, &bytes)?;

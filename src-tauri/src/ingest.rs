@@ -3,7 +3,7 @@
 
 use rusqlite::Connection;
 
-use crate::error::{AppError, AppResult};
+use crate::error::AppResult;
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct IngestStats {
@@ -22,6 +22,7 @@ pub fn ingest_list_response(conn: &Connection, store_id: i64, body: &str) -> App
 mod tests {
     use super::*;
     use crate::db::Db;
+    use crate::error::AppError;
     use crate::models::LeadRow;
 
     const FIXTURE: &str = concat!(

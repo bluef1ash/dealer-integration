@@ -18,8 +18,9 @@ pub fn upsert_leads(conn: &Connection, store_id: i64, rows: &[LeadRow]) -> AppRe
              ON CONFLICT(leads_id) DO UPDATE SET
                 phone = excluded.phone,
                 name = excluded.name,
-                status_key = excluded.status_key,
-                status_label = excluded.status_label,
+                -- 空状态 = 本次来源不带状态（导出快照无状态列），保留库内现值
+                status_key = CASE WHEN excluded.status_key = '' THEN leads.status_key ELSE excluded.status_key END,
+                status_label = CASE WHEN excluded.status_label = '' THEN leads.status_label ELSE excluded.status_label END,
                 source_label = excluded.source_label,
                 intention = excluded.intention,
                 leads_time = excluded.leads_time,

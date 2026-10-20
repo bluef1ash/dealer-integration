@@ -91,6 +91,12 @@ impl ParseLeadsTime for String {
     }
 }
 
+/// 今日是否已有快照登记（调度器的每日守卫）
+pub fn has_snapshot_for(conn: &Connection, date: &str) -> AppResult<bool> {
+    let n: i64 = conn.query_row("SELECT COUNT(*) FROM snapshots WHERE date = ?1", [date], |r| r.get(0))?;
+    Ok(n > 0)
+}
+
 #[derive(Debug, PartialEq, Eq)]
 pub struct ReconcileStats {
     pub seen: usize,
@@ -135,10 +141,6 @@ mod tests {
         assert!(rows.iter().all(|r| !r.leads_id.is_empty()));
         assert!(rows.iter().all(|r| r.phone.starts_with("1380000")));
         assert!(rows.iter().all(|r| r.leads_time > 0));
-        let with_promo: Vec<_> = rows.iter().filter(|r| !r.promotion_id.is_empty()).collect();
-        eprintln!("DEBUG 带计划归因行数={} 示例={:?}", with_promo.len(), with_promo.first().map(|r| (r.leads_id.clone(), r.promotion_id.clone(), r.promotion_name.clone())));
-        let l2 = rows.iter().find(|r| r.leads_id == "1109298389");
-        eprintln!("DEBUG 1109298389={:?}", l2.map(|r| (r.promotion_id.clone(), r.promotion_name.clone())));
         assert!(rows.iter().any(|r| r.promotion_id == "7691306192144973887"));
     }
 
@@ -166,6 +168,10 @@ mod tests {
             let phone: String =
                 conn.query_row("SELECT phone FROM leads WHERE leads_id = '1115047139'", [], |r| r.get(0))?;
             assert_eq!(phone, "13800001001");
+            // 导出行无状态列，合并不得抹掉库内状态（spec：快照纠偏而非倒退）
+            let status: String =
+                conn.query_row("SELECT status_label FROM leads WHERE leads_id = '1115047139'", [], |r| r.get(0))?;
+            assert_eq!(status, "未联系");
             let total: i64 = conn.query_row("SELECT COUNT(*) FROM leads", [], |r| r.get(0))?;
             assert_eq!(total, 10); // 9 存量（10 - 1 漂移缺失）+ 1 新线索
             let snaps: i64 = conn.query_row("SELECT COUNT(*) FROM snapshots", [], |r| r.get(0))?;

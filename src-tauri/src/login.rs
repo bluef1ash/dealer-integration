@@ -45,6 +45,7 @@ pub fn open_login(app: &AppHandle, store_id: i64, account: &str, password: Optio
 
 async fn capture_session(app: &AppHandle, store_id: i64, label: String, account: &str, password: Option<String>) {
     let mut autofilled = false;
+    let mut human_notified = false;
     for attempt in 0..MAX_POLLS {
         tokio::time::sleep(std::time::Duration::from_millis(POLL_INTERVAL_MS)).await;
         let Some(window) = app.get_webview_window(&label) else {
@@ -62,6 +63,14 @@ async fn capture_session(app: &AppHandle, store_id: i64, label: String, account:
                 autofilled = true;
                 let account = account.to_string();
                 let _ = window.eval(&autofill_script(&account, &password));
+            }
+            // 回填已做但 60 秒仍无会话：大概率被滑块/风控拦下，主动提醒人工介入
+            if autofilled && !human_notified && attempt == 32 {
+                human_notified = true;
+                let _ = app.emit(
+                    "login://needs-human",
+                    serde_json::json!({ "store_id": store_id, "reason": "自动回填未通过，窗口内可能有滑块验证，请人工完成" }),
+                );
             }
         }
         let cookies = window.cookies_for_url(ORIGIN.parse().expect("常量 URL 有效"));

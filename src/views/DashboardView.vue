@@ -3,10 +3,12 @@ import { onMounted, ref } from 'vue';
 import DataState from '../components/DataState.vue';
 import SparkLine from '../components/SparkLine.vue';
 import { api } from '../api';
-import type { Dashboard as Dash, FetchState, Range } from '../types';
+import type { Dashboard as Dash, FetchState, Range, Store } from '../types';
 import { cpl, fmtTime, shortName, yuan } from '../utils';
 
 const state = ref<FetchState>('loading');
+const stores = ref<Store[]>([]);
+const storeId = ref<number | null>(null);
 const errorMsg = ref('');
 const dash = ref<Dash | null>(null);
 const pulling = ref(false);
@@ -30,7 +32,7 @@ async function load(): Promise<void> {
   state.value = 'loading';
   errorMsg.value = '';
   try {
-    dash.value = await api.getDashboard(buildRange(), null);
+    dash.value = await api.getDashboard(buildRange(), storeId.value);
     state.value = dash.value.store_cards.length === 0 ? 'empty' : 'ready';
   } catch (e) {
     state.value = 'error';
@@ -64,7 +66,10 @@ async function pullNow(): Promise<void> {
   }
 }
 
-onMounted(load);
+onMounted(async () => {
+  stores.value = await api.listStores().catch(() => []);
+  await load();
+});
 </script>
 
 <template>
@@ -96,6 +101,10 @@ onMounted(load);
 
     <section class="toolbar">
       <div class="seg">
+        <select v-model.number="storeId" class="store-select" @change="load">
+          <option :value="null">全部门店</option>
+          <option v-for="s in stores" :key="s.id" :value="s.id">{{ s.name }}</option>
+        </select>
         <button v-for="k in ['Today', 'Last7', 'Last30']" :key="k" type="button" :class="{ on: rangeKey === k }" @click="switchRange(k as RangeKey)">
           {{ k === 'Today' ? '今日' : k === 'Last7' ? '近7天' : '近30天' }}
         </button>
@@ -175,6 +184,7 @@ onMounted(load);
 }
 .seg button.on { background: #4f46e5; border-color: #4f46e5; color: #fff; }
 .seg input { border: 1px solid #e7e5e4; border-radius: 10px; padding: 6px 10px; font-size: 13px; }
+.store-select { border: 1px solid #e7e5e4; border-radius: 999px; padding: 7px 12px; background: #fff; font-size: 13px; color: #57534e; }
 .pull { border: none; background: none; color: #4f46e5; font-size: 13px; text-decoration: underline; cursor: pointer; }
 .pull:disabled { color: #a8a29e; text-decoration: none; cursor: default; }
 .pull-msg { font-size: 12px; color: #78716c; margin-bottom: 12px; }
