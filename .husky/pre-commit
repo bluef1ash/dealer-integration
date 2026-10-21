@@ -1,9 +1,5 @@
-#!/bin/sh
-# 提交前检查：前端类型检查 + Rust 格式/静态检查/测试。
-# 启用：git config core.hooksPath githooks
+# 提交前检查：前端类型检查 + Rust 格式/静态检查/测试（husky v9，由 package.json prepare 自动启用）
 # 紧急跳过：git commit --no-verify（AGENTS 禁止在代码里压制检测，逃生口只在提交命令上）
-set -e
-cd "$(git rev-parse --show-toplevel)"
 
 # 本机 clippy/rustfmt 随发行版装在独立目录，默认 PATH 找不到时补上（其他机器自动跳过）
 if ! command -v cargo-clippy >/dev/null 2>&1; then

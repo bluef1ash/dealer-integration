@@ -19,11 +19,7 @@ cargo fmt             # Rust 格式化（配置见根目录 rustfmt.toml）
 
 ### 提交钩子
 
-`githooks/pre-commit` 在每次提交前依次跑 `pnpm typecheck`、`cargo fmt --check`、`cargo clippy`、`cargo test`。启用（每台机器一次）：
-
-```bash
-git config core.hooksPath githooks
-```
+husky 在每次提交前依次跑 `pnpm typecheck`、`cargo fmt --check`、`cargo clippy`、`cargo test`（脚本见 `.husky/pre-commit`）。`pnpm install` 时经 `prepare` 脚本自动启用，无需手动配置。
 
 紧急跳过用 `git commit --no-verify`（逃生口只在提交命令上，代码内不允许压制检测）。
 

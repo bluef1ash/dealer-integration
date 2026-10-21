@@ -8,7 +8,11 @@
     "build": "vue-tsc -b && vite build",
     "preview": "vite preview",
     "tauri": "tauri",
-    "typecheck": "vue-tsc -b"
+    "typecheck": "vue-tsc -b",
+    "biome:lint": "biome lint",
+    "biome": "biome check --write",
+    "precommit": "pnpm run typecheck && pnpm run biome",
+    "prepare": "husky"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.9.0",
@@ -18,6 +22,7 @@
     "@biomejs/biome": "2.5.15",
     "@tauri-apps/cli": "^2.9.6",
     "@vitejs/plugin-vue": "^6.0.0",
+    "husky": "^9.1.7",
     "typescript": "~5.8.3",
     "vite": "^7.3.0",
     "vue-tsc": "^3.1.4"
