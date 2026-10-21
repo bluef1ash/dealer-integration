@@ -30,21 +30,69 @@ fn delete(name: &str) -> crate::error::AppResult<()> {
     Ok(())
 }
 
-/// 门店巨懂车会话 cookie（整罐；仅 passport sessionid 不够，见 issue #3）
-pub fn store_cookie_name(account: &str) -> String {
-    format!("store:{account}:cookie")
+/// 门店巨懂车会话 cookie（整罐；仅 passport sessionid 不够，见 issue #3）。
+/// Windows 凭据管理器单条上限 2560 UTF-16 字符，整罐常超限——按分片存多条，读取拼接还原。
+const COOKIE_CHUNK_CHARS: usize = 2000;
+const COOKIE_CHUNK_CAP: usize = 64;
+
+fn cookie_chunk_name(account: &str, i: usize) -> String {
+    format!("store:{account}:cookie#{i}")
+}
+
+/// 按字符数安全分片（不会切断多字节字符）
+fn chunk_text(text: &str, size: usize) -> Vec<&str> {
+    let mut chunks = Vec::new();
+    let mut start = 0;
+    for (idx, _) in text.char_indices() {
+        if idx - start >= size {
+            chunks.push(&text[start..idx]);
+            start = idx;
+        }
+    }
+    if start < text.len() {
+        chunks.push(&text[start..]);
+    }
+    chunks
 }
 
 pub fn save_store_cookie(account: &str, cookie: &str) -> crate::error::AppResult<()> {
-    set(&store_cookie_name(account), cookie)
+    let chunks = chunk_text(cookie, COOKIE_CHUNK_CHARS);
+    for (i, chunk) in chunks.iter().enumerate() {
+        set(&cookie_chunk_name(account, i), chunk)?;
+    }
+    // 本次比上次短时清理多余旧分片
+    let mut i = chunks.len();
+    while i < COOKIE_CHUNK_CAP && get(&cookie_chunk_name(account, i))?.is_some() {
+        delete(&cookie_chunk_name(account, i))?;
+        i += 1;
+    }
+    Ok(())
 }
 
 pub fn load_store_cookie(account: &str) -> crate::error::AppResult<Option<String>> {
-    get(&store_cookie_name(account))
+    let mut parts: Vec<String> = Vec::new();
+    for i in 0..COOKIE_CHUNK_CAP {
+        match get(&cookie_chunk_name(account, i))? {
+            Some(part) => parts.push(part),
+            None => break,
+        }
+    }
+    Ok(if parts.is_empty() {
+        None
+    } else {
+        Some(parts.join(""))
+    })
 }
 
 pub fn delete_store(account: &str) -> crate::error::AppResult<()> {
-    delete(&store_cookie_name(account))?;
+    // 兼容清理：早期单条格式
+    delete(&format!("store:{account}:cookie"))?;
+    for i in 0..COOKIE_CHUNK_CAP {
+        if get(&cookie_chunk_name(account, i))?.is_none() {
+            break;
+        }
+        delete(&cookie_chunk_name(account, i))?;
+    }
     delete(&store_password_name(account))?;
     Ok(())
 }
@@ -71,4 +119,28 @@ pub fn save_ocean_tokens(access: &str, refresh: &str) -> crate::error::AppResult
 
 pub fn load_ocean_tokens() -> crate::error::AppResult<(Option<String>, Option<String>)> {
     Ok((get("ocean:access_token")?, get("ocean:refresh_token")?))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// 分片→拼接无损，且每片不超限；多字节字符不被切断
+    #[test]
+    fn chunking_roundtrips_and_respects_limit() {
+        let jar = "a=1; ".repeat(600); // 2400 字符 → 2 片
+        let chunks = chunk_text(&jar, COOKIE_CHUNK_CHARS);
+        assert!(chunks.len() >= 2);
+        assert!(chunks
+            .iter()
+            .all(|c| c.chars().count() <= COOKIE_CHUNK_CHARS));
+        assert_eq!(chunks.concat(), jar);
+
+        let cjk = "会话测试值; ".repeat(700); // 多字节
+        let chunks = chunk_text(cjk.trim_end_matches("; "), COOKIE_CHUNK_CHARS);
+        assert_eq!(chunks.concat(), cjk.trim_end_matches("; "));
+        assert!(chunks
+            .iter()
+            .all(|c| std::str::from_utf8(c.as_bytes()).is_ok()));
+    }
 }
