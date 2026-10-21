@@ -152,6 +152,15 @@ onMounted(async () => {
         await refresh()
       }
     }),
+    await listen<{ store_id: number; ok: boolean; error: string }>('login://pulled', async (e) => {
+      const name =
+        statuses.value.find((s) => s.store.id === e.payload.store_id)?.store.name ??
+        `门店${e.payload.store_id}`
+      loginHint.value = e.payload.ok
+        ? `「${name}」登录后自动拉取完成`
+        : `「${name}」登录后自动拉取失败：${e.payload.error}`
+      await refresh()
+    }),
     await listen<{ store_id: number; reason: string }>('login://needs-human', async (e) => {
       const name =
         statuses.value.find((s) => s.store.id === e.payload.store_id)?.store.name ??
@@ -196,9 +205,16 @@ onUnmounted(() => {
                 <td>{{ s.store.name }}</td>
                 <td>{{ s.store.account }}</td>
                 <td>
-                  <span :class="s.has_session && !s.last_error ? 'ok' : 'bad'">
-                    {{ s.has_session ? (s.last_error ? '失效' : '有效') : '未登录' }}
-                  </span>
+                  <span
+                    v-if="!s.has_session"
+                    class="bad"
+                  >未登录</span>
+                  <span
+                    v-else-if="s.last_error"
+                    class="bad"
+                    :title="s.last_error"
+                  >拉取失败</span>
+                  <span v-else class="ok">有效</span>
                 </td>
                 <td>{{ fmtTime(s.last_success_at) }}</td>
                 <td>{{ s.backfilled ? '已完成' : '待回填' }}</td>

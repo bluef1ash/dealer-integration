@@ -86,6 +86,7 @@ pub async fn pull_store(
             }
         }
         Err(e) => {
+            eprintln!("[拉取] {} 失败: {e}", store.name);
             let expired = is_session_error(&e);
             let _ = db.with(|conn| {
                 crate::repo::stores::record_pull(

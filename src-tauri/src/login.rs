@@ -126,6 +126,34 @@ async fn capture_session(
                     message: "会话已捕获".into(),
                 },
             );
+            // 登录成功立即试拉一轮：马上验证会话真伪（直调是否被拒），状态与数据即时刷新
+            let app = app.clone();
+            tauri::async_runtime::spawn(async move {
+                let db = app.state::<crate::db::Db>();
+                let clients = app.state::<crate::commands::Clients>();
+                if let Ok(store) = db.with(|conn| crate::repo::stores::get(conn, store_id)) {
+                    let backfilled = db
+                        .with(
+                            |conn| Ok(crate::repo::stores::pull_state(conn, store_id)?.backfilled),
+                        )
+                        .unwrap_or(false);
+                    let outcome = crate::collector::pull_store(
+                        &db,
+                        &clients.jd,
+                        &store,
+                        crate::collector::window_days_for(backfilled),
+                    )
+                    .await;
+                    if outcome.ok && !backfilled {
+                        let _ =
+                            db.with(|conn| crate::repo::stores::mark_backfilled(conn, store_id));
+                    }
+                    let _ = app.emit(
+                        "login://pulled",
+                        serde_json::json!({ "store_id": store_id, "ok": outcome.ok, "error": outcome.error }),
+                    );
+                }
+            });
             return;
         }
     }
