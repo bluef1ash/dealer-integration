@@ -31,8 +31,9 @@ fn delete(name: &str) -> crate::error::AppResult<()> {
 }
 
 /// 门店巨懂车会话 cookie（整罐；仅 passport sessionid 不够，见 issue #3）。
-/// Windows 凭据管理器单条上限 2560 UTF-16 字符，整罐常超限——按分片存多条，读取拼接还原。
-const COOKIE_CHUNK_CHARS: usize = 2000;
+/// Windows 凭据管理器 blob 上限 2560 字节 = UTF-16 1280 字符（keyring 报错文案的
+/// "2560 chars" 有误导，实测按字节计），留余量按 1200 字符分片，读取拼接还原。
+const COOKIE_CHUNK_CHARS: usize = 1200;
 const COOKIE_CHUNK_CAP: usize = 64;
 
 fn cookie_chunk_name(account: &str, i: usize) -> String {
@@ -129,6 +130,24 @@ pub fn load_ocean_tokens() -> crate::error::AppResult<(Option<String>, Option<St
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// 真机验证（--ignored 手动跑）：2910 字符假 jar 经真实 Windows 凭据管理器存取
+    #[test]
+    #[ignore]
+    fn real_keyring_roundtrip_oversized_jar() {
+        let account = "selftest-chunk";
+        let jar = "motor_dealer_session_id=abc; "
+            .repeat(145)
+            .trim_end()
+            .to_string(); // 2900+ 字符
+        save_store_cookie(account, &jar).expect("分片保存应成功");
+        let loaded = load_store_cookie(account)
+            .expect("读取应成功")
+            .expect("应有会话");
+        assert_eq!(loaded, jar);
+        delete_store(account).unwrap();
+        assert!(load_store_cookie(account).unwrap().is_none());
+    }
 
     /// 分片→拼接无损，且每片不超限；多字节字符不被切断
     #[test]
