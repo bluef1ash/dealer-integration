@@ -66,6 +66,11 @@ pub fn save_store_cookie(account: &str, cookie: &str) -> crate::error::AppResult
         delete(&cookie_chunk_name(account, i))?;
         i += 1;
     }
+    eprintln!(
+        "[凭证] 会话已存 account={account} 共 {} 字符 / {} 片",
+        cookie.chars().count(),
+        chunks.len()
+    );
     Ok(())
 }
 
