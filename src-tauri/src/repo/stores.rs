@@ -125,6 +125,36 @@ pub fn mark_backfilled(conn: &Connection, store_id: i64) -> AppResult<()> {
     Ok(())
 }
 
+/// 门店 ↔ 广告账户映射（多对多）
+pub fn set_mapping(
+    conn: &Connection,
+    store_id: i64,
+    ad_account_id: &str,
+    enable: bool,
+) -> AppResult<()> {
+    if enable {
+        conn.execute(
+            "INSERT OR IGNORE INTO store_ad_accounts (store_id, ad_account_id) VALUES (?1, ?2)",
+            rusqlite::params![store_id, ad_account_id],
+        )?;
+    } else {
+        conn.execute(
+            "DELETE FROM store_ad_accounts WHERE store_id = ?1 AND ad_account_id = ?2",
+            rusqlite::params![store_id, ad_account_id],
+        )?;
+    }
+    Ok(())
+}
+
+pub fn mapping_account_ids(conn: &Connection, store_id: i64) -> AppResult<Vec<String>> {
+    let mut stmt =
+        conn.prepare("SELECT ad_account_id FROM store_ad_accounts WHERE store_id = ?1")?;
+    let rows = stmt
+        .query_map([store_id], |r| r.get(0))?
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(rows)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -163,34 +193,4 @@ mod tests {
         })
         .unwrap();
     }
-}
-
-/// 门店 ↔ 广告账户映射（多对多）
-pub fn set_mapping(
-    conn: &Connection,
-    store_id: i64,
-    ad_account_id: &str,
-    enable: bool,
-) -> AppResult<()> {
-    if enable {
-        conn.execute(
-            "INSERT OR IGNORE INTO store_ad_accounts (store_id, ad_account_id) VALUES (?1, ?2)",
-            rusqlite::params![store_id, ad_account_id],
-        )?;
-    } else {
-        conn.execute(
-            "DELETE FROM store_ad_accounts WHERE store_id = ?1 AND ad_account_id = ?2",
-            rusqlite::params![store_id, ad_account_id],
-        )?;
-    }
-    Ok(())
-}
-
-pub fn mapping_account_ids(conn: &Connection, store_id: i64) -> AppResult<Vec<String>> {
-    let mut stmt =
-        conn.prepare("SELECT ad_account_id FROM store_ad_accounts WHERE store_id = ?1")?;
-    let rows = stmt
-        .query_map([store_id], |r| r.get(0))?
-        .collect::<Result<Vec<_>, _>>()?;
-    Ok(rows)
 }

@@ -1,3 +1,5 @@
 # Clippy 配置（cargo clippy 在 src-tauri/ 下运行时生效）
 # 与 Cargo.toml 的 rust-version 保持一致，避免建议超出最低支持版本 API
 msrv = "1.77"
+# rust-analyzer flycheck 带 --all-targets 会连测试一起检查；测试断言用 unwrap 是惯例，予豁免
+allow-unwrap-in-tests = true
