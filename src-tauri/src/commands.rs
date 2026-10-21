@@ -83,11 +83,16 @@ pub fn get_collection_status(db: State<'_, Db>) -> Result<Vec<StoreStatus>, Stri
             .into_iter()
             .map(|store| {
                 let state = states.get(&store.id);
+                let has_session = match credentials::load_store_cookie(&store.account) {
+                    Ok(c) => c.is_some(),
+                    // 凭证库读失败会直接显示「未登录」，必须留痕否则无从排查
+                    Err(e) => {
+                        eprintln!("[状态] 凭证库读取失败 account={}: {e}", store.account);
+                        false
+                    }
+                };
                 StoreStatus {
-                    has_session: credentials::load_store_cookie(&store.account)
-                        .ok()
-                        .flatten()
-                        .is_some(),
+                    has_session,
                     store: store.clone(),
                     last_success_at: state.and_then(|s| s.last_success_at),
                     last_error: state.map(|s| s.last_error.clone()).unwrap_or_default(),

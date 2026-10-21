@@ -44,6 +44,10 @@ pub fn open_login(
         .title(format!("巨懂车登录 - {}", account))
         .inner_size(1100.0, 800.0)
         .build()?;
+    eprintln!(
+        "[登录] 窗口已创建 label={label} account={account} 携带密码={}",
+        password.is_some()
+    );
     let app = app.clone();
     let account = account.to_string();
     tauri::async_runtime::spawn(async move {
@@ -65,6 +69,7 @@ async fn capture_session(
         tokio::time::sleep(std::time::Duration::from_millis(POLL_INTERVAL_MS)).await;
         let Some(window) = app.get_webview_window(&label) else {
             // 用户手动关窗：视为放弃
+            eprintln!("[登录] 窗口已不在（poll={attempt}），按放弃处理");
             let _ = app.emit(
                 "login://result",
                 LoginEvent {
@@ -92,10 +97,16 @@ async fn capture_session(
             }
         }
         let Some(jar) = cookies_on_main(app, &window) else {
-            continue; // 主线程繁忙本轮未取到，下轮再试
+            continue; // 诊断日志已在 cookies_on_main 内打印失败原因，下轮再试
         };
+        if attempt % 15 == 0 {
+            // 心跳日志（30 秒一条）：只记 cookie 名不记值
+            eprintln!("[登录] poll={attempt} 已见 cookie: {}", cookie_names(&jar));
+        }
         if jar.contains(&format!("{CRM_COOKIE}=")) {
+            eprintln!("[登录] 命中 {CRM_COOKIE}，保存会话（{} 字节）", jar.len());
             if let Err(e) = credentials::save_store_cookie(account, &jar) {
+                eprintln!("[登录] 凭证库保存失败: {e}");
                 let _ = app.emit(
                     "login://result",
                     LoginEvent {
@@ -131,27 +142,48 @@ async fn capture_session(
     }
 }
 
+/// cookie 名清单（日志用，避免打出 cookie 值）
+fn cookie_names(jar: &str) -> String {
+    jar.split(';')
+        .filter_map(|p| p.split('=').next())
+        .map(str::trim)
+        .collect::<Vec<_>>()
+        .join(",")
+}
+
 /// WebView2 的 COM 接口只能在主线程触碰：把调用投递到主线程执行并取回结果。
 /// 返回 None = 主线程未在超时内应答（跳过本轮）。
 /// 直接在工作线程调 cookies_for_url 会触发 0x80000003 断点异常（真机实证）。
 fn cookies_on_main(app: &AppHandle, window: &WebviewWindow) -> Option<String> {
     let (tx, rx) = mpsc::channel();
     let w = window.clone();
-    app.run_on_main_thread(move || {
-        let jar = w
-            .cookies_for_url(ORIGIN.parse().expect("常量 URL 有效"))
-            .ok()
-            .map(|cookies| {
-                cookies
+    if let Err(e) = app.run_on_main_thread(move || {
+        match w.cookies_for_url(ORIGIN.parse().expect("常量 URL 有效")) {
+            Ok(cookies) => {
+                let jar = cookies
                     .iter()
                     .map(|c| format!("{}={}", c.name(), c.value()))
                     .collect::<Vec<_>>()
-                    .join("; ")
-            });
-        let _ = tx.send(jar);
-    })
-    .ok()?;
-    rx.recv_timeout(Duration::from_secs(3)).ok().flatten()
+                    .join("; ");
+                // 成功读取不打日志（30 秒心跳足够），仅失败要留痕
+                let _ = tx.send(Some(jar));
+            }
+            Err(e) => {
+                eprintln!("[登录] cookie 读取失败: {e}");
+                let _ = tx.send(None);
+            }
+        }
+    }) {
+        eprintln!("[登录] 主线程投递失败: {e}");
+        return None;
+    }
+    match rx.recv_timeout(Duration::from_secs(3)) {
+        Ok(v) => v,
+        Err(e) => {
+            eprintln!("[登录] 主线程应答超时: {e}");
+            None
+        }
+    }
 }
 
 /// eval 同理走主线程（尽力而为）
