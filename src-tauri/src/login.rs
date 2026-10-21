@@ -4,7 +4,9 @@
 //! 携带密码时尝试自动回填（滑块等风控环节仍需真人完成，见 ADR-0003）。
 
 use serde::Serialize;
-use tauri::{AppHandle, Emitter, Manager, WebviewUrl, WebviewWindowBuilder};
+use std::sync::mpsc;
+use std::time::Duration;
+use tauri::{AppHandle, Emitter, Manager, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
 
 use crate::credentials;
 use crate::error::{AppError, AppResult};
@@ -77,8 +79,8 @@ async fn capture_session(
         if let Some(password) = password.clone() {
             if !autofilled && attempt == 2 {
                 autofilled = true;
-                let account = account.to_string();
-                let _ = window.eval(autofill_script(&account, &password));
+                let script = autofill_script(account, &password);
+                let _ = eval_on_main(app, &window, &script);
             }
             // 回填已做但 60 秒仍无会话：大概率被滑块/风控拦下，主动提醒人工介入
             if autofilled && !human_notified && attempt == 32 {
@@ -89,36 +91,31 @@ async fn capture_session(
                 );
             }
         }
-        let cookies = window.cookies_for_url(ORIGIN.parse().expect("常量 URL 有效"));
-        if let Ok(cookies) = cookies {
-            let jar = cookies
-                .iter()
-                .map(|c| format!("{}={}", c.name(), c.value()))
-                .collect::<Vec<_>>()
-                .join("; ");
-            if jar.contains(&format!("{CRM_COOKIE}=")) {
-                if let Err(e) = credentials::save_store_cookie(account, &jar) {
-                    let _ = app.emit(
-                        "login://result",
-                        LoginEvent {
-                            store_id,
-                            ok: false,
-                            message: e.to_string(),
-                        },
-                    );
-                    return;
-                }
-                let _ = window.close();
+        let Some(jar) = cookies_on_main(app, &window) else {
+            continue; // 主线程繁忙本轮未取到，下轮再试
+        };
+        if jar.contains(&format!("{CRM_COOKIE}=")) {
+            if let Err(e) = credentials::save_store_cookie(account, &jar) {
                 let _ = app.emit(
                     "login://result",
                     LoginEvent {
                         store_id,
-                        ok: true,
-                        message: "会话已捕获".into(),
+                        ok: false,
+                        message: e.to_string(),
                     },
                 );
                 return;
             }
+            let _ = window.close();
+            let _ = app.emit(
+                "login://result",
+                LoginEvent {
+                    store_id,
+                    ok: true,
+                    message: "会话已捕获".into(),
+                },
+            );
+            return;
         }
     }
     let _ = app.emit(
@@ -132,6 +129,39 @@ async fn capture_session(
     if let Some(window) = app.get_webview_window(&label) {
         let _ = window.close();
     }
+}
+
+/// WebView2 的 COM 接口只能在主线程触碰：把调用投递到主线程执行并取回结果。
+/// 返回 None = 主线程未在超时内应答（跳过本轮）。
+/// 直接在工作线程调 cookies_for_url 会触发 0x80000003 断点异常（真机实证）。
+fn cookies_on_main(app: &AppHandle, window: &WebviewWindow) -> Option<String> {
+    let (tx, rx) = mpsc::channel();
+    let w = window.clone();
+    app.run_on_main_thread(move || {
+        let jar = w
+            .cookies_for_url(ORIGIN.parse().expect("常量 URL 有效"))
+            .ok()
+            .map(|cookies| {
+                cookies
+                    .iter()
+                    .map(|c| format!("{}={}", c.name(), c.value()))
+                    .collect::<Vec<_>>()
+                    .join("; ")
+            });
+        let _ = tx.send(jar);
+    })
+    .ok()?;
+    rx.recv_timeout(Duration::from_secs(3)).ok().flatten()
+}
+
+/// eval 同理走主线程（尽力而为）
+fn eval_on_main(app: &AppHandle, window: &WebviewWindow, script: &str) -> AppResult<()> {
+    let w = window.clone();
+    let script = script.to_string();
+    app.run_on_main_thread(move || {
+        let _ = w.eval(&script);
+    })?;
+    Ok(())
 }
 
 /// 自动回填脚本：命中第一个可输入账号的文本框与密码框后提交。
