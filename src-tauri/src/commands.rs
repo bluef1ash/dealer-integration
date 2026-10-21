@@ -99,9 +99,11 @@ pub fn get_collection_status(db: State<'_, Db>) -> Result<Vec<StoreStatus>, Stri
     .map_err(err_string)
 }
 
-/// 发起 WebView 登录；凭证库里有密码则自动回填（issue #11 自动重登同一路径）
+/// 发起 WebView 登录；凭证库里有密码则自动回填（issue #11 自动重登同一路径）。
+/// 必须 async：同步 command 在主线程 IPC 路径里建窗口会触发 WebView2 断点异常
+/// 0x80000003（tauri#12982，真机实证）；async 后在建制线程执行、经事件循环代理创建
 #[tauri::command]
-pub fn start_login(app: AppHandle, db: State<'_, Db>, store_id: i64) -> Result<(), String> {
+pub async fn start_login(app: AppHandle, db: State<'_, Db>, store_id: i64) -> Result<(), String> {
     let store = get_store(&db, store_id).map_err(err_string)?;
     let password = credentials::load_store_password(&store.account).map_err(err_string)?;
     login::open_login(&app, store_id, &store.account, password).map_err(err_string)
