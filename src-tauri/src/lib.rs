@@ -28,9 +28,13 @@ pub fn run() {
             // 库文件放应用数据目录（随用户配置走），不进安装目录
             let dir = app.path().app_data_dir().expect("无法解析应用数据目录");
             fs::create_dir_all(&dir).expect("无法创建应用数据目录");
-            let database = db::Db::open(&dir.join("dealer-integration.db")).expect("无法打开本地数据库");
+            let database =
+                db::Db::open(&dir.join("dealer-integration.db")).expect("无法打开本地数据库");
             app.manage(database);
-            app.manage(Clients { jd: judongche::client::Client::new(), ocean: ocean::Client::new() });
+            app.manage(Clients {
+                jd: judongche::client::Client::new(),
+                ocean: ocean::Client::new(),
+            });
             scheduler::start(app.handle().clone());
             Ok(())
         })

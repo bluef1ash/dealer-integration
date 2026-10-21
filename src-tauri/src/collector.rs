@@ -15,7 +15,11 @@ const MAX_PAGES: u32 = 200;
 
 /// 拉取窗口口径：已回填的店重拉近 7 天覆盖状态变更，未回填的走 90 天首次回填（spec #10）
 pub fn window_days_for(backfilled: bool) -> i64 {
-    if backfilled { 7 } else { 90 }
+    if backfilled {
+        7
+    } else {
+        90
+    }
 }
 
 /// 会话失效特征（spike 实测 code 10014）
@@ -34,7 +38,12 @@ pub struct PullOutcome {
 }
 
 /// 拉取单店线索：复用会话直调列表接口，按页循环入库
-pub async fn pull_store_leads(db: &Db, client: &JdClient, store: &Store, window_days: i64) -> AppResult<usize> {
+pub async fn pull_store_leads(
+    db: &Db,
+    client: &JdClient,
+    store: &Store,
+    window_days: i64,
+) -> AppResult<usize> {
     let cookie = credentials::load_store_cookie(&store.account)?
         .ok_or_else(|| AppError::Message(format!("门店 {} 尚未登录巨懂车", store.name)))?;
     let now = crate::db::now();
@@ -44,7 +53,8 @@ pub async fn pull_store_leads(db: &Db, client: &JdClient, store: &Store, window_
         let mut body = window.clone();
         body.page_number = Some(page);
         let text = client.list_leads(&cookie, &body).await?;
-        let ingested = db.with(|conn| crate::ingest::ingest_list_response(conn, store.id, &text))?;
+        let ingested =
+            db.with(|conn| crate::ingest::ingest_list_response(conn, store.id, &text))?;
         total += ingested.upserted;
         if ingested.seen < PAGE_SIZE as usize {
             break;
@@ -56,16 +66,35 @@ pub async fn pull_store_leads(db: &Db, client: &JdClient, store: &Store, window_
 }
 
 /// 拉取并登记结果；返回供调度与角标使用
-pub async fn pull_store(db: &Db, client: &JdClient, store: &Store, window_days: i64) -> PullOutcome {
+pub async fn pull_store(
+    db: &Db,
+    client: &JdClient,
+    store: &Store,
+    window_days: i64,
+) -> PullOutcome {
     match pull_store_leads(db, client, store, window_days).await {
         Ok(count) => {
-            let _ = db.with(|conn| crate::repo::stores::record_pull(conn, store.id, true, "", crate::db::now()));
-            PullOutcome { store_id: store.id, ok: true, ingested: count, session_expired: false, error: String::new() }
+            let _ = db.with(|conn| {
+                crate::repo::stores::record_pull(conn, store.id, true, "", crate::db::now())
+            });
+            PullOutcome {
+                store_id: store.id,
+                ok: true,
+                ingested: count,
+                session_expired: false,
+                error: String::new(),
+            }
         }
         Err(e) => {
             let expired = is_session_error(&e);
             let _ = db.with(|conn| {
-                crate::repo::stores::record_pull(conn, store.id, false, &e.to_string(), crate::db::now())
+                crate::repo::stores::record_pull(
+                    conn,
+                    store.id,
+                    false,
+                    &e.to_string(),
+                    crate::db::now(),
+                )
             });
             PullOutcome {
                 store_id: store.id,

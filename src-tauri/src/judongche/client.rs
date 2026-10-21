@@ -33,7 +33,13 @@ pub struct TimeRange {
 
 impl LeadsWindow {
     /// 列表请求体（带分页）；常规门店口径为 only_out_leads=false，流出线索视图为 true
-    pub fn list(min: i64, max: i64, page_number: u32, page_size: u32, only_out_leads: bool) -> Self {
+    pub fn list(
+        min: i64,
+        max: i64,
+        page_number: u32,
+        page_size: u32,
+        only_out_leads: bool,
+    ) -> Self {
         Self {
             leads_time: TimeRange { min, max },
             page_key: "dealer_out_leads_list",
@@ -132,14 +138,24 @@ impl Client {
     /// 线索列表（主路径：会话直调）
     pub async fn list_leads(&self, cookies: &str, window: &LeadsWindow) -> AppResult<String> {
         let url = format!("{BASE}/motor/crm_wb/leads/scan/list?__method=window.fetch");
-        let resp = self.post(cookies, &url, window).send().await?.error_for_status()?;
+        let resp = self
+            .post(cookies, &url, window)
+            .send()
+            .await?
+            .error_for_status()?;
         Ok(resp.text().await?)
     }
 
     /// 提交导出任务，返回任务 ID
     pub async fn create_export(&self, cookies: &str, window: &LeadsWindow) -> AppResult<String> {
         let url = format!("{BASE}/motor/crm_wb/leads/scan/async_export?__method=window.fetch");
-        let text = self.post(cookies, &url, window).send().await?.error_for_status()?.text().await?;
+        let text = self
+            .post(cookies, &url, window)
+            .send()
+            .await?
+            .error_for_status()?
+            .text()
+            .await?;
         let parsed: SimpleResponse = serde_json::from_str(&text)
             .map_err(|e| AppError::Message(format!("导出响应解析失败: {e}")))?;
         if parsed.status != 0 {
@@ -149,11 +165,22 @@ impl Client {
     }
 
     /// 导出记录列表（轮询任务状态）
-    pub async fn task_list(&self, cookies: &str, page: u32, page_size: u32) -> AppResult<TaskListResponse> {
+    pub async fn task_list(
+        &self,
+        cookies: &str,
+        page: u32,
+        page_size: u32,
+    ) -> AppResult<TaskListResponse> {
         let url = format!(
             "{BASE}/motor/crm_wb/task/instance/list?__method=window.fetch&scene=105&page_number={page}&page_size={page_size}"
         );
-        let text = self.get(cookies, &url).send().await?.error_for_status()?.text().await?;
+        let text = self
+            .get(cookies, &url)
+            .send()
+            .await?
+            .error_for_status()?
+            .text()
+            .await?;
         let parsed: TaskListResponse = serde_json::from_str(&text)
             .map_err(|e| AppError::Message(format!("任务列表解析失败: {e}")))?;
         if parsed.status != 0 {
@@ -175,7 +202,9 @@ impl Client {
         if bytes.starts_with(b"PK") {
             Ok(bytes.to_vec())
         } else {
-            Err(AppError::Message("导出下载未返回 xlsx 内容（会话可能失效）".into()))
+            Err(AppError::Message(
+                "导出下载未返回 xlsx 内容（会话可能失效）".into(),
+            ))
         }
     }
 }

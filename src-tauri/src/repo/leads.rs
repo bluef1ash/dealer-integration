@@ -53,7 +53,10 @@ pub fn upsert_leads(conn: &Connection, store_id: i64, rows: &[LeadRow]) -> AppRe
 
 /// 快照合并键：导出表的线索 ID 即列表接口的 feiyu_leads_id（issue #12 口径），
 /// 命中则沿用列表主键，避免广告线索双份
-pub fn find_leads_id_by_feiyu(conn: &Connection, feiyu_leads_id: &str) -> AppResult<Option<String>> {
+pub fn find_leads_id_by_feiyu(
+    conn: &Connection,
+    feiyu_leads_id: &str,
+) -> AppResult<Option<String>> {
     let mut stmt = conn.prepare("SELECT leads_id FROM leads WHERE feiyu_leads_id = ?1")?;
     let found = stmt
         .query_row([feiyu_leads_id], |r| r.get::<_, String>(0))
@@ -111,7 +114,9 @@ pub fn ensure_ad_account(conn: &Connection, id: &str, alias: &str) -> AppResult<
 /// 全部广告账户 ID（报表拉取范围）
 pub fn ad_account_ids(conn: &Connection) -> AppResult<Vec<String>> {
     let mut stmt = conn.prepare("SELECT id FROM ad_accounts ORDER BY id")?;
-    let rows = stmt.query_map([], |r| r.get(0))?.collect::<Result<Vec<_>, _>>()?;
+    let rows = stmt
+        .query_map([], |r| r.get(0))?
+        .collect::<Result<Vec<_>, _>>()?;
     Ok(rows)
 }
 
@@ -139,8 +144,11 @@ mod tests {
             upsert_leads(conn, 1, &[lead("L1", "已联系"), lead("L2", "未联系")])?;
             let n: i64 = conn.query_row("SELECT COUNT(*) FROM leads", [], |r| r.get(0))?;
             assert_eq!(n, 2);
-            let label: String =
-                conn.query_row("SELECT status_label FROM leads WHERE leads_id = 'L1'", [], |r| r.get(0))?;
+            let label: String = conn.query_row(
+                "SELECT status_label FROM leads WHERE leads_id = 'L1'",
+                [],
+                |r| r.get(0),
+            )?;
             assert_eq!(label, "已联系");
             Ok(())
         })

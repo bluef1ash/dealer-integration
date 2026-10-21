@@ -117,8 +117,8 @@ pub fn rows_from_item(item: &ReportItem) -> (Option<AdReportRow>, Option<PlanRep
 }
 
 pub fn parse_report_response(body: &str) -> AppResult<(Vec<AdReportRow>, Vec<PlanReportRow>)> {
-    let resp: ApiResponse<ReportData> =
-        serde_json::from_str(body).map_err(|e| AppError::Message(format!("报表响应解析失败: {e}")))?;
+    let resp: ApiResponse<ReportData> = serde_json::from_str(body)
+        .map_err(|e| AppError::Message(format!("报表响应解析失败: {e}")))?;
     if resp.code != 0 {
         return Err(AppError::remote(resp.code, &resp.message));
     }
@@ -150,8 +150,8 @@ pub struct TokenData {
 }
 
 pub fn parse_token_response(body: &str) -> AppResult<TokenData> {
-    let resp: ApiResponse<TokenData> =
-        serde_json::from_str(body).map_err(|e| AppError::Message(format!("token 响应解析失败: {e}")))?;
+    let resp: ApiResponse<TokenData> = serde_json::from_str(body)
+        .map_err(|e| AppError::Message(format!("token 响应解析失败: {e}")))?;
     if resp.code != 0 {
         return Err(AppError::remote(resp.code, &resp.message));
     }
@@ -159,7 +159,12 @@ pub fn parse_token_response(body: &str) -> AppResult<TokenData> {
 }
 
 /// OAuth 换 token 请求体（授权码模式）
-pub fn token_request_body(app_id: i64, secret: &str, auth_code: &str, redirect_uri: &str) -> serde_json::Value {
+pub fn token_request_body(
+    app_id: i64,
+    secret: &str,
+    auth_code: &str,
+    redirect_uri: &str,
+) -> serde_json::Value {
     serde_json::json!({
         "app_id": app_id,
         "secret": secret,
@@ -205,7 +210,10 @@ mod tests {
         let (ads, plans) = parse_report_response(&body).unwrap();
         assert_eq!(ads.len(), 2);
         assert_eq!(plans.len(), 2);
-        let p1 = plans.iter().find(|p| p.promotion_id == "7691306192144973887").unwrap();
+        let p1 = plans
+            .iter()
+            .find(|p| p.promotion_id == "7691306192144973887")
+            .unwrap();
         assert_eq!(p1.promotion_name, "示例计划甲");
         assert_eq!(p1.spend, 60.0);
     }
@@ -218,7 +226,12 @@ mod tests {
 
     #[test]
     fn token_request_shape_is_documented_contract() {
-        let body = token_request_body(1700000000, "sec", "auth-code", "http://127.0.0.1:1720/callback");
+        let body = token_request_body(
+            1700000000,
+            "sec",
+            "auth-code",
+            "http://127.0.0.1:1720/callback",
+        );
         assert_eq!(body["grant_type"], "authorization_code");
         assert_eq!(body["auth_code"], "auth-code");
         assert_eq!(body["app_id"], 1700000000i64);

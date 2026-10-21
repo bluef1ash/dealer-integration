@@ -10,7 +10,11 @@ pub fn insert(conn: &Connection, name: &str, account: &str) -> AppResult<Store> 
         "INSERT INTO stores (name, account, created_at) VALUES (?1, ?2, ?3)",
         rusqlite::params![name, account, crate::db::now()],
     )?;
-    Ok(Store { id: conn.last_insert_rowid(), name: name.into(), account: account.into() })
+    Ok(Store {
+        id: conn.last_insert_rowid(),
+        name: name.into(),
+        account: account.into(),
+    })
 }
 
 pub fn delete(conn: &Connection, id: i64) -> AppResult<()> {
@@ -25,16 +29,28 @@ pub fn list(conn: &Connection) -> AppResult<Vec<Store>> {
     let mut stmt = conn.prepare("SELECT id, name, account FROM stores ORDER BY id")?;
     let rows = stmt
         .query_map([], |row| {
-            Ok(Store { id: row.get(0)?, name: row.get(1)?, account: row.get(2)? })
+            Ok(Store {
+                id: row.get(0)?,
+                name: row.get(1)?,
+                account: row.get(2)?,
+            })
         })?
         .collect::<Result<Vec<_>, _>>()?;
     Ok(rows)
 }
 
 pub fn get(conn: &Connection, id: i64) -> AppResult<Store> {
-    conn.query_row("SELECT id, name, account FROM stores WHERE id = ?1", [id], |row| {
-        Ok(Store { id: row.get(0)?, name: row.get(1)?, account: row.get(2)? })
-    })
+    conn.query_row(
+        "SELECT id, name, account FROM stores WHERE id = ?1",
+        [id],
+        |row| {
+            Ok(Store {
+                id: row.get(0)?,
+                name: row.get(1)?,
+                account: row.get(2)?,
+            })
+        },
+    )
     .map_err(|e| crate::error::AppError::Message(format!("门店不存在: {e}")))
 }
 
@@ -54,7 +70,10 @@ pub fn pull_state(conn: &Connection, store_id: i64) -> AppResult<PullState> {
         },
     )
     .or_else(|e| match e {
-        rusqlite::Error::QueryReturnedNoRows => Ok(PullState { store_id, ..Default::default() }),
+        rusqlite::Error::QueryReturnedNoRows => Ok(PullState {
+            store_id,
+            ..Default::default()
+        }),
         other => Err(crate::error::AppError::Db(other)),
     })
 }
@@ -78,7 +97,13 @@ pub fn pull_states(conn: &Connection) -> AppResult<Vec<PullState>> {
 }
 
 /// 记录一次拉取结果：成功刷新 last_success_at 并清空错误；失败只记错误
-pub fn record_pull(conn: &Connection, store_id: i64, ok: bool, error: &str, now_ts: i64) -> AppResult<()> {
+pub fn record_pull(
+    conn: &Connection,
+    store_id: i64,
+    ok: bool,
+    error: &str,
+    now_ts: i64,
+) -> AppResult<()> {
     conn.execute(
         "INSERT INTO store_pull_state (store_id, last_success_at, last_attempt_at, last_error, backfilled)
          VALUES (?1, ?2, ?3, ?4, 0)
@@ -141,7 +166,12 @@ mod tests {
 }
 
 /// 门店 ↔ 广告账户映射（多对多）
-pub fn set_mapping(conn: &Connection, store_id: i64, ad_account_id: &str, enable: bool) -> AppResult<()> {
+pub fn set_mapping(
+    conn: &Connection,
+    store_id: i64,
+    ad_account_id: &str,
+    enable: bool,
+) -> AppResult<()> {
     if enable {
         conn.execute(
             "INSERT OR IGNORE INTO store_ad_accounts (store_id, ad_account_id) VALUES (?1, ?2)",
@@ -157,7 +187,10 @@ pub fn set_mapping(conn: &Connection, store_id: i64, ad_account_id: &str, enable
 }
 
 pub fn mapping_account_ids(conn: &Connection, store_id: i64) -> AppResult<Vec<String>> {
-    let mut stmt = conn.prepare("SELECT ad_account_id FROM store_ad_accounts WHERE store_id = ?1")?;
-    let rows = stmt.query_map([store_id], |r| r.get(0))?.collect::<Result<Vec<_>, _>>()?;
+    let mut stmt =
+        conn.prepare("SELECT ad_account_id FROM store_ad_accounts WHERE store_id = ?1")?;
+    let rows = stmt
+        .query_map([store_id], |r| r.get(0))?
+        .collect::<Result<Vec<_>, _>>()?;
     Ok(rows)
 }

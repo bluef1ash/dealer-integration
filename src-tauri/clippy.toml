@@ -1,0 +1,3 @@
+# Clippy 配置（cargo clippy 在 src-tauri/ 下运行时生效）
+# 与 Cargo.toml 的 rust-version 保持一致，避免建议超出最低支持版本 API
+msrv = "1.77"

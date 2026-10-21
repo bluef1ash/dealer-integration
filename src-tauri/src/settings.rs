@@ -19,7 +19,10 @@ pub struct OceanCredentials {
 
 pub fn get_ocean_credentials(conn: &Connection) -> rusqlite::Result<OceanCredentials> {
     let read = |key: &str| -> rusqlite::Result<Option<String>> {
-        conn.query_row("SELECT value FROM settings WHERE key = ?1", [key], |row| row.get(0)).optional()
+        conn.query_row("SELECT value FROM settings WHERE key = ?1", [key], |row| {
+            row.get(0)
+        })
+        .optional()
     };
     Ok(OceanCredentials {
         app_id: read(KEY_APP_ID)?,
@@ -28,7 +31,11 @@ pub fn get_ocean_credentials(conn: &Connection) -> rusqlite::Result<OceanCredent
 }
 
 /// 成对 upsert 两项凭证；事务保证读侧看到的始终是同一组配置
-pub fn save_ocean_credentials(conn: &Connection, app_id: &str, app_secret: &str) -> rusqlite::Result<()> {
+pub fn save_ocean_credentials(
+    conn: &Connection,
+    app_id: &str,
+    app_secret: &str,
+) -> rusqlite::Result<()> {
     let tx = conn.unchecked_transaction()?;
     for (key, value) in [(KEY_APP_ID, app_id), (KEY_APP_SECRET, app_secret)] {
         tx.execute(
@@ -41,7 +48,10 @@ pub fn save_ocean_credentials(conn: &Connection, app_id: &str, app_secret: &str)
 }
 
 pub fn get_setting(conn: &Connection, key: &str) -> rusqlite::Result<Option<String>> {
-    conn.query_row("SELECT value FROM settings WHERE key = ?1", [key], |row| row.get(0)).optional()
+    conn.query_row("SELECT value FROM settings WHERE key = ?1", [key], |row| {
+        row.get(0)
+    })
+    .optional()
 }
 
 pub fn save_setting(conn: &Connection, key: &str, value: &str) -> rusqlite::Result<()> {
@@ -68,7 +78,10 @@ mod tests {
             assert_eq!(got.app_id.as_deref(), Some("id-2"));
             assert_eq!(got.app_secret.as_deref(), Some("sec-2"));
             save_setting(conn, KEY_SNAPSHOT_HOUR, "23").unwrap();
-            assert_eq!(get_setting(conn, KEY_SNAPSHOT_HOUR).unwrap().as_deref(), Some("23"));
+            assert_eq!(
+                get_setting(conn, KEY_SNAPSHOT_HOUR).unwrap().as_deref(),
+                Some("23")
+            );
             Ok(())
         })
         .unwrap();

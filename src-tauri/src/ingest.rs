@@ -12,10 +12,17 @@ pub struct IngestStats {
 }
 
 /// 巨懂车「线索管理」列表接口响应入库
-pub fn ingest_list_response(conn: &Connection, store_id: i64, body: &str) -> AppResult<IngestStats> {
+pub fn ingest_list_response(
+    conn: &Connection,
+    store_id: i64,
+    body: &str,
+) -> AppResult<IngestStats> {
     let rows = crate::judongche::parse::lead_rows_from_list(body)?;
     let upserted = crate::repo::leads::upsert_leads(conn, store_id, &rows)?;
-    Ok(IngestStats { seen: rows.len(), upserted })
+    Ok(IngestStats {
+        seen: rows.len(),
+        upserted,
+    })
 }
 
 #[cfg(test)]
@@ -42,7 +49,8 @@ mod tests {
     }
 
     fn ingest(db: &Db) -> IngestStats {
-        db.with(|conn| ingest_list_response(conn, 1, &fixture_body())).unwrap()
+        db.with(|conn| ingest_list_response(conn, 1, &fixture_body()))
+            .unwrap()
     }
 
     /// 回放夹具：解析与字段映射正确，行数与关键列入库
@@ -91,7 +99,9 @@ mod tests {
 
     fn dump(db: &Db) -> Vec<(String, String, String, i64)> {
         db.with(|conn| {
-            let mut stmt = conn.prepare("SELECT leads_id, phone, status_label, leads_time FROM leads ORDER BY leads_id")?;
+            let mut stmt = conn.prepare(
+                "SELECT leads_id, phone, status_label, leads_time FROM leads ORDER BY leads_id",
+            )?;
             let rows = stmt
                 .query_map([], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)))?
                 .collect::<Result<Vec<_>, _>>()

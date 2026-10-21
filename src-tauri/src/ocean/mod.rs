@@ -30,7 +30,9 @@ fn urlencode(s: &str) -> String {
     let mut out = String::new();
     for b in s.bytes() {
         match b {
-            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => out.push(b as char),
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
+                out.push(b as char)
+            }
             other => out.push_str(&format!("%{other:02X}")),
         }
     }
@@ -52,7 +54,9 @@ pub struct ReportQuery {
 
 impl Client {
     pub fn new() -> Self {
-        Self { http: reqwest::Client::new() }
+        Self {
+            http: reqwest::Client::new(),
+        }
     }
 
     /// 授权码换 token
@@ -68,13 +72,26 @@ impl Client {
     }
 
     /// 刷新 token
-    pub async fn refresh_token(&self, app_id: i64, secret: &str, refresh_token: &str) -> AppResult<parse::TokenData> {
+    pub async fn refresh_token(
+        &self,
+        app_id: i64,
+        secret: &str,
+        refresh_token: &str,
+    ) -> AppResult<parse::TokenData> {
         let body = parse::refresh_request_body(app_id, secret, refresh_token);
         self.token(body).await
     }
 
     async fn token(&self, body: serde_json::Value) -> AppResult<parse::TokenData> {
-        let text = self.http.post(TOKEN_URL).json(&body).send().await?.error_for_status()?.text().await?;
+        let text = self
+            .http
+            .post(TOKEN_URL)
+            .json(&body)
+            .send()
+            .await?
+            .error_for_status()?
+            .text()
+            .await?;
         parse::parse_token_response(&text)
     }
 
@@ -110,8 +127,8 @@ impl Client {
             .text()
             .await?;
         // 帧校验提前到客户端层，解析由 parse 模块负责
-        let env: Envelope =
-            serde_json::from_str(&text).map_err(|e| AppError::Message(format!("报表响应解析失败: {e}")))?;
+        let env: Envelope = serde_json::from_str(&text)
+            .map_err(|e| AppError::Message(format!("报表响应解析失败: {e}")))?;
         if env.code != 0 {
             return Err(AppError::remote(env.code, &env.message));
         }
@@ -131,10 +148,15 @@ pub fn ingest_reports(
     ads: &[AdReportRow],
     plans: &[PlanReportRow],
 ) -> crate::error::AppResult<usize> {
-    for id in ads.iter().map(|r| r.ad_account_id.as_str()).chain(plans.iter().map(|r| r.ad_account_id.as_str())) {
+    for id in ads
+        .iter()
+        .map(|r| r.ad_account_id.as_str())
+        .chain(plans.iter().map(|r| r.ad_account_id.as_str()))
+    {
         crate::repo::leads::ensure_ad_account(conn, id, "")?;
     }
-    let n = crate::repo::leads::upsert_ad_reports(conn, ads)? + crate::repo::leads::upsert_plan_reports(conn, plans)?;
+    let n = crate::repo::leads::upsert_ad_reports(conn, ads)?
+        + crate::repo::leads::upsert_plan_reports(conn, plans)?;
     Ok(n)
 }
 
@@ -147,7 +169,8 @@ mod tests {
     #[test]
     fn ingest_report_fixtures_persists_and_is_idempotent() {
         let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/oceanengine");
-        let ad_body = std::fs::read_to_string(format!("{dir}/report_advertiser_sample.json")).unwrap();
+        let ad_body =
+            std::fs::read_to_string(format!("{dir}/report_advertiser_sample.json")).unwrap();
         let plan_body = std::fs::read_to_string(format!("{dir}/report_plan_sample.json")).unwrap();
         let db = Db::open_in_memory();
 
@@ -166,11 +189,14 @@ mod tests {
         assert_eq!(dump(&db), first);
         // 账户档已补：A=1700000000；账户日行 2 条、计划日行 2 条
         db.with(|conn| {
-            let accounts: i64 = conn.query_row("SELECT COUNT(*) FROM ad_accounts", [], |r| r.get(0))?;
+            let accounts: i64 =
+                conn.query_row("SELECT COUNT(*) FROM ad_accounts", [], |r| r.get(0))?;
             assert_eq!(accounts, 1);
-            let ad_rows: i64 = conn.query_row("SELECT COUNT(*) FROM ad_reports_daily", [], |r| r.get(0))?;
+            let ad_rows: i64 =
+                conn.query_row("SELECT COUNT(*) FROM ad_reports_daily", [], |r| r.get(0))?;
             assert_eq!(ad_rows, 2);
-            let plan_rows: i64 = conn.query_row("SELECT COUNT(*) FROM plan_reports_daily", [], |r| r.get(0))?;
+            let plan_rows: i64 =
+                conn.query_row("SELECT COUNT(*) FROM plan_reports_daily", [], |r| r.get(0))?;
             assert_eq!(plan_rows, 2);
             Ok(())
         })
@@ -179,7 +205,8 @@ mod tests {
 
     fn dump(db: &Db) -> Vec<(String, String, f64)> {
         db.with(|conn| {
-            let mut stmt = conn.prepare("SELECT ad_account_id, date, spend FROM ad_reports_daily ORDER BY date")?;
+            let mut stmt = conn
+                .prepare("SELECT ad_account_id, date, spend FROM ad_reports_daily ORDER BY date")?;
             let rows = stmt
                 .query_map([], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)))?
                 .collect::<Result<Vec<_>, _>>()
@@ -192,7 +219,9 @@ mod tests {
     #[test]
     fn authorize_url_encodes_redirect() {
         let url = authorize_url("1700000000");
-        assert!(url.starts_with("https://www.oceanengine.com/external/oauth/authorize?client_id=1700000000"));
+        assert!(url.starts_with(
+            "https://www.oceanengine.com/external/oauth/authorize?client_id=1700000000"
+        ));
         assert!(url.contains("redirect_uri=http%3A%2F%2F127.0.0.1%3A1720%2Fcallback"));
     }
 }

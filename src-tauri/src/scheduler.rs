@@ -32,13 +32,19 @@ pub fn start(app: AppHandle) {
 async fn run_hourly(app: &AppHandle) -> crate::error::AppResult<()> {
     let db = app.state::<Db>();
     let clients = app.state::<Clients>();
-    let stores: Vec<Store> = db.with(|conn| crate::repo::stores::list(conn))?;
+    let stores: Vec<Store> = db.with(crate::repo::stores::list)?;
     for store in stores {
         // 单店环节全部尽力而为：任何失败只记日志，不中断其余门店与报表步（issue #10）
         let backfilled = db
             .with(|conn| Ok(crate::repo::stores::pull_state(conn, store.id)?.backfilled))
             .unwrap_or(false);
-        let outcome = collector::pull_store(&db, &clients.jd, &store, collector::window_days_for(backfilled)).await;
+        let outcome = collector::pull_store(
+            &db,
+            &clients.jd,
+            &store,
+            collector::window_days_for(backfilled),
+        )
+        .await;
         if outcome.ok && !backfilled {
             let _ = db.with(|conn| crate::repo::stores::mark_backfilled(conn, store.id));
         }
@@ -84,17 +90,25 @@ async fn refresh_and_pull_ocean(app: &AppHandle) -> crate::error::AppResult<()> 
 
     // 过期前 5 分钟自动刷新
     let now = crate::db::now();
-    let valid_until: i64 = db
-        .with(|conn| {
-            Ok(settings::get_setting(conn, settings::KEY_OCEAN_TOKEN_EXPIRES)?
+    let valid_until: i64 = db.with(|conn| {
+        Ok(
+            settings::get_setting(conn, settings::KEY_OCEAN_TOKEN_EXPIRES)?
                 .and_then(|v| v.parse::<i64>().ok())
-                .unwrap_or(0))
-        })?;
+                .unwrap_or(0),
+        )
+    })?;
     let access = if valid_until.saturating_sub(now) < 300 {
-        let tokens = clients.ocean.refresh_token(app_id, secret.trim(), &refresh).await?;
+        let tokens = clients
+            .ocean
+            .refresh_token(app_id, secret.trim(), &refresh)
+            .await?;
         credentials::save_ocean_tokens(&tokens.access_token, &tokens.refresh_token)?;
         db.with_sql(|conn| {
-            settings::save_setting(conn, settings::KEY_OCEAN_TOKEN_EXPIRES, &(now + tokens.expires_in).to_string())
+            settings::save_setting(
+                conn,
+                settings::KEY_OCEAN_TOKEN_EXPIRES,
+                &(now + tokens.expires_in).to_string(),
+            )
         })?;
         tokens.access_token
     } else {

@@ -1,0 +1,8 @@
+{
+  // Rust 静态检查与格式化：保存即格式化，检查用 clippy（比 rustc 多一层语义告警）
+  "rust-analyzer.check.command": "clippy",
+  "[rust]": {
+    "editor.defaultFormatter": "rust-lang.rust-analyzer",
+    "editor.formatOnSave": true
+  }
+}

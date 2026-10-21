@@ -2,7 +2,7 @@
 
 ## 仓库
 
-桌面客户端（Tauri 2 + Rust + Vue 3 + TypeScript），整合巨懂车线索与巨量引擎广告报表。数据存本地 SQLite（表结构见 `docs/databases.md`）。常用命令见 README「开发」节：`pnpm tauri dev` 本地开发、`pnpm tauri build` 出安装包、`pnpm typecheck` 类型检查、`cargo check`（src-tauri/，需平台系统依赖）。
+桌面客户端（Tauri 2 + Rust + Vue 3 + TypeScript），整合巨懂车线索与巨量引擎广告报表。数据存本地 SQLite（表结构见 `docs/databases.md`）。常用命令见 README「开发」节：`pnpm tauri dev` 本地开发、`pnpm tauri build` 出安装包、`pnpm typecheck` 类型检查、`cargo check`（src-tauri/，需平台系统依赖）、`cargo clippy`/`cargo fmt` 静态检查与格式化（门槛配置：src-tauri/Cargo.toml `[lints]`、根 rustfmt.toml、src-tauri/clippy.toml）。
 
 
 ## 代码编写硬规则

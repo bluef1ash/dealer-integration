@@ -10,7 +10,12 @@ pnpm tauri dev        # 本地开发（起 Tauri 壳 + Vite 热更新）
 pnpm tauri build      # 出安装包（Windows: .msi/.exe；macOS: .app/.dmg）
 pnpm typecheck        # 仅类型检查
 pnpm build            # 仅构建前端（vue-tsc + vite build，产物在 dist/）
+cargo check           # Rust 编译检查（src-tauri/ 下运行）
+cargo clippy          # Rust 静态检查（门槛见 src-tauri/Cargo.toml [lints]）
+cargo fmt             # Rust 格式化（配置见根目录 rustfmt.toml）
 ```
+
+注意：clippy 与 rustfmt 位于 Rust 发行版的 `clippy-preview/bin`、`rustfmt-preview/bin` 目录，需加入 PATH 后才能直接调用（本机示例：`D:\environment\rust\clippy-preview\bin`）。
 
 注意：`pnpm tauri dev/build` 需要目标平台的系统依赖（Windows: WebView2；macOS: Xcode CLT；Linux: webkit2gtk-4.0/4.1 开发库），不能跨平台交叉编译——各平台在其本机出包。
 

@@ -14,11 +14,21 @@ const DAY: i64 = 86_400;
 /// 时间范围 → unix 秒区间（本地时区；自定义原样返回）
 pub fn range_bounds(range: &Range) -> (i64, i64) {
     let today = chrono::Local::now().date_naive();
-    let start_of = |d: chrono::NaiveDate| chrono::Local.from_utc_datetime(&d.and_hms_opt(0, 0, 0).expect("零点有效")).timestamp();
+    let start_of = |d: chrono::NaiveDate| {
+        chrono::Local
+            .from_utc_datetime(&d.and_hms_opt(0, 0, 0).expect("零点有效"))
+            .timestamp()
+    };
     match range {
         Range::Today => (start_of(today), crate::db::now()),
-        Range::Last7 => (start_of(today - chrono::Duration::days(6)), crate::db::now()),
-        Range::Last30 => (start_of(today - chrono::Duration::days(29)), crate::db::now()),
+        Range::Last7 => (
+            start_of(today - chrono::Duration::days(6)),
+            crate::db::now(),
+        ),
+        Range::Last30 => (
+            start_of(today - chrono::Duration::days(29)),
+            crate::db::now(),
+        ),
         Range::Custom { from, to } => (*from, *to),
     }
 }
@@ -30,13 +40,17 @@ pub fn distinct_statuses(conn: &Connection, store_id: Option<i64>) -> AppResult<
             let mut stmt = conn.prepare(
                 "SELECT DISTINCT status_label FROM leads WHERE status_label <> '' AND store_id = ?1 ORDER BY status_label",
             )?;
-            let rows = stmt.query_map([id], |r| r.get::<_, String>(0))?.collect::<Result<Vec<_>, _>>()?;
+            let rows = stmt
+                .query_map([id], |r| r.get::<_, String>(0))?
+                .collect::<Result<Vec<_>, _>>()?;
             rows
         }
         None => {
             let mut stmt =
                 conn.prepare("SELECT DISTINCT status_label FROM leads WHERE status_label <> '' ORDER BY status_label")?;
-            let rows = stmt.query_map([], |r| r.get::<_, String>(0))?.collect::<Result<Vec<_>, _>>()?;
+            let rows = stmt
+                .query_map([], |r| r.get::<_, String>(0))?
+                .collect::<Result<Vec<_>, _>>()?;
             rows
         }
     };
@@ -73,7 +87,11 @@ pub fn leads_page(conn: &Connection, filter: &LeadsFilter) -> AppResult<LeadPage
     let limit_sql = if filter.page_size == 0 {
         String::new()
     } else {
-        format!(" LIMIT {} OFFSET {}", filter.page_size, (filter.page as u64) * (filter.page_size as u64))
+        format!(
+            " LIMIT {} OFFSET {}",
+            filter.page_size,
+            (filter.page as u64) * (filter.page_size as u64)
+        )
     };
     let sql = format!(
         "SELECT l.leads_id, l.store_id, s.name, l.phone, l.name, l.status_label, l.source_label,
@@ -84,26 +102,33 @@ pub fn leads_page(conn: &Connection, filter: &LeadsFilter) -> AppResult<LeadPage
     );
     let mut stmt = conn.prepare(&sql)?;
     let rows = stmt
-        .query_map(rusqlite::params_from_iter(bind.iter().map(|p| p.as_ref())), |r| {
-            Ok(LeadDetail {
-                leads_id: r.get(0)?,
-                store_id: r.get(1)?,
-                store_name: r.get(2)?,
-                phone: r.get(3)?,
-                name: r.get(4)?,
-                status_label: r.get(5)?,
-                source_label: r.get(6)?,
-                intention: r.get(7)?,
-                leads_time: r.get(8)?,
-                promotion_name: r.get(9)?,
-            })
-        })?
+        .query_map(
+            rusqlite::params_from_iter(bind.iter().map(|p| p.as_ref())),
+            |r| {
+                Ok(LeadDetail {
+                    leads_id: r.get(0)?,
+                    store_id: r.get(1)?,
+                    store_name: r.get(2)?,
+                    phone: r.get(3)?,
+                    name: r.get(4)?,
+                    status_label: r.get(5)?,
+                    source_label: r.get(6)?,
+                    intention: r.get(7)?,
+                    leads_time: r.get(8)?,
+                    promotion_name: r.get(9)?,
+                })
+            },
+        )?
         .collect::<Result<Vec<_>, _>>()?;
     Ok(LeadPage { total, rows })
 }
 
 fn local_date(ts: i64) -> String {
-    chrono::Local.timestamp_opt(ts, 0).single().map(|d| d.date_naive().to_string()).unwrap_or_default()
+    chrono::Local
+        .timestamp_opt(ts, 0)
+        .single()
+        .map(|d| d.date_naive().to_string())
+        .unwrap_or_default()
 }
 
 /// 看板聚合：主指标 + 门店卡片（14 天走势）+ 计划扁平表。
@@ -112,8 +137,16 @@ pub fn dashboard(conn: &Connection, range: &Range, store_id: Option<i64>) -> App
     let (from, to) = range_bounds(range);
     let now = crate::db::now();
     // 报表按日粒度：秒级窗口换算本地日期串；越界侧收敛到今天，防自定义远期溢出
-    let from_date = if from <= 0 { "1970-01-01".to_string() } else { local_date(from) };
-    let to_date = if to >= now { local_date(now) } else { local_date(to) };
+    let from_date = if from <= 0 {
+        "1970-01-01".to_string()
+    } else {
+        local_date(from)
+    };
+    let to_date = if to >= now {
+        local_date(now)
+    } else {
+        local_date(to)
+    };
     let today = local_date(now);
 
     let leads: i64 = conn.query_row(
@@ -134,12 +167,19 @@ pub fn dashboard(conn: &Connection, range: &Range, store_id: Option<i64>) -> App
         rusqlite::params![from_date, to_date, store_id],
         |r| r.get(0),
     )?;
-    let cpl = if leads > 0 { (spend / leads as f64).round() as i64 } else { 0 };
+    let cpl = if leads > 0 {
+        (spend / leads as f64).round() as i64
+    } else {
+        0
+    };
 
     // 门店卡片：逐店统计线索/消耗与 14 天走势，附采集状态
     let stores = crate::repo::stores::list(conn)?;
     let pull_states: std::collections::HashMap<i64, crate::models::PullState> =
-        crate::repo::stores::pull_states(conn)?.into_iter().map(|s| (s.store_id, s)).collect();
+        crate::repo::stores::pull_states(conn)?
+            .into_iter()
+            .map(|s| (s.store_id, s))
+            .collect();
     let today_start = range_bounds(&Range::Today).0;
     let mut store_cards = Vec::new();
     for store in stores {
@@ -231,7 +271,14 @@ pub fn dashboard(conn: &Connection, range: &Range, store_id: Option<i64>) -> App
         plan.leads = leads_by_promo.remove(&plan.promotion_id).unwrap_or(0);
     }
 
-    Ok(Dashboard { spend, cpl, leads, deals, store_cards, plans })
+    Ok(Dashboard {
+        spend,
+        cpl,
+        leads,
+        deals,
+        store_cards,
+        plans,
+    })
 }
 
 #[cfg(test)]
@@ -279,16 +326,39 @@ mod tests {
             )?;
             crate::repo::leads::upsert_leads(conn, 2, &[lead("L4", t0 + 32400, "未联系", "P1")])?;
             crate::repo::leads::ensure_ad_account(conn, "A1", "账户一")?;
-            conn.execute("INSERT INTO store_ad_accounts (store_id, ad_account_id) VALUES (1, 'A1')", [])?;
+            conn.execute(
+                "INSERT INTO store_ad_accounts (store_id, ad_account_id) VALUES (1, 'A1')",
+                [],
+            )?;
             let d = |days_ago: i64| {
-                chrono::Local.timestamp_opt(t0 - days_ago * DAY, 0).single().unwrap().date_naive().to_string()
+                chrono::Local
+                    .timestamp_opt(t0 - days_ago * DAY, 0)
+                    .single()
+                    .unwrap()
+                    .date_naive()
+                    .to_string()
             };
             crate::repo::leads::upsert_ad_reports(
                 conn,
                 &[
-                    AdReportRow { ad_account_id: "A1".into(), date: d(0), spend: 100.0, ..Default::default() },
-                    AdReportRow { ad_account_id: "A1".into(), date: d(3), spend: 50.0, ..Default::default() },
-                    AdReportRow { ad_account_id: "A1".into(), date: d(40), spend: 999.0, ..Default::default() },
+                    AdReportRow {
+                        ad_account_id: "A1".into(),
+                        date: d(0),
+                        spend: 100.0,
+                        ..Default::default()
+                    },
+                    AdReportRow {
+                        ad_account_id: "A1".into(),
+                        date: d(3),
+                        spend: 50.0,
+                        ..Default::default()
+                    },
+                    AdReportRow {
+                        ad_account_id: "A1".into(),
+                        date: d(40),
+                        spend: 999.0,
+                        ..Default::default()
+                    },
                 ],
             )?;
             crate::repo::leads::upsert_plan_reports(
@@ -323,24 +393,48 @@ mod tests {
         seed(&db);
         db.with(|conn| {
             // 仅状态
-            let page = leads_page(conn, &LeadsFilter { status: Some("未联系".into()), page_size: 10, ..Default::default() })?;
+            let page = leads_page(
+                conn,
+                &LeadsFilter {
+                    status: Some("未联系".into()),
+                    page_size: 10,
+                    ..Default::default()
+                },
+            )?;
             assert_eq!(page.total, 3);
             // 状态 + 门店
             let page = leads_page(
                 conn,
-                &LeadsFilter { status: Some("未联系".into()), store_id: Some(1), page_size: 10, ..Default::default() },
+                &LeadsFilter {
+                    status: Some("未联系".into()),
+                    store_id: Some(1),
+                    page_size: 10,
+                    ..Default::default()
+                },
             )?;
             assert_eq!(page.total, 2);
             // 仅时间窗（3 天前后各留一天，只圈中 L3）
             let t0 = today_start();
             let page = leads_page(
                 conn,
-                &LeadsFilter { from: Some(t0 - 4 * DAY), to: Some(t0 - 2 * DAY), page_size: 10, ..Default::default() },
+                &LeadsFilter {
+                    from: Some(t0 - 4 * DAY),
+                    to: Some(t0 - 2 * DAY),
+                    page_size: 10,
+                    ..Default::default()
+                },
             )?;
             assert_eq!(page.total, 1);
             assert_eq!(page.rows[0].leads_id, "L3");
             // 分页（page 从 0 计）：留资时间倒序 L2,L1,L4,L3,L5 → 第 2 页为 L4,L3
-            let page = leads_page(conn, &LeadsFilter { page: 1, page_size: 2, ..Default::default() })?;
+            let page = leads_page(
+                conn,
+                &LeadsFilter {
+                    page: 1,
+                    page_size: 2,
+                    ..Default::default()
+                },
+            )?;
             assert_eq!(page.total, 5);
             assert_eq!(page.rows.len(), 2);
             assert_eq!(page.rows[0].leads_id, "L4");
@@ -372,8 +466,14 @@ mod tests {
         let db = Db::open_in_memory();
         seed(&db);
         db.with(|conn| {
-            assert_eq!(distinct_statuses(conn, None)?, vec!["已成交".to_string(), "未联系".to_string()]);
-            assert_eq!(distinct_statuses(conn, Some(2))?, vec!["未联系".to_string()]);
+            assert_eq!(
+                distinct_statuses(conn, None)?,
+                vec!["已成交".to_string(), "未联系".to_string()]
+            );
+            assert_eq!(
+                distinct_statuses(conn, Some(2))?,
+                vec!["未联系".to_string()]
+            );
             Ok(())
         })
         .unwrap();
@@ -386,16 +486,31 @@ mod tests {
         db.with(|conn| {
             // 近 5 天 ～ 今天：排除 40 天前的 L5 与 999 消耗
             let t0 = today_start();
-            let d = dashboard(conn, &Range::Custom { from: t0 - 5 * DAY, to: t0 + DAY }, None)?;
+            let d = dashboard(
+                conn,
+                &Range::Custom {
+                    from: t0 - 5 * DAY,
+                    to: t0 + DAY,
+                },
+                None,
+            )?;
             assert_eq!(d.leads, 4);
             assert_eq!(d.deals, 1);
             assert_eq!(d.spend, 150.0);
             assert_eq!(d.cpl, 38);
             // 门店卡片：城东店 3 条全部消耗归属，城西店 1 条无消耗
-            let east = d.store_cards.iter().find(|c| c.store.name == "城东店").unwrap();
+            let east = d
+                .store_cards
+                .iter()
+                .find(|c| c.store.name == "城东店")
+                .unwrap();
             assert_eq!(east.leads, 3);
             assert_eq!(east.spend, 150.0);
-            let west = d.store_cards.iter().find(|c| c.store.name == "城西店").unwrap();
+            let west = d
+                .store_cards
+                .iter()
+                .find(|c| c.store.name == "城西店")
+                .unwrap();
             assert_eq!(west.leads, 1);
             assert_eq!(west.spend, 0.0);
             // 计划扁平表：P1 60 元 3 线索（L1/L2/L4）；P2 40 元 1 线索（L3）
@@ -420,7 +535,11 @@ mod tests {
             assert_eq!(d.spend, 100.0);
             assert_eq!(d.cpl, 33);
             // 14 天走势：末位为今天各店线索量
-            let east = d.store_cards.iter().find(|c| c.store.name == "城东店").unwrap();
+            let east = d
+                .store_cards
+                .iter()
+                .find(|c| c.store.name == "城东店")
+                .unwrap();
             assert_eq!(east.trend.len(), 14);
             assert_eq!(*east.trend.last().unwrap(), 2);
             assert_eq!(*east.trend.first().unwrap(), 0);

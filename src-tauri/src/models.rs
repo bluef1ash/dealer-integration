@@ -79,7 +79,10 @@ pub enum Range {
     Last7,
     Last30,
     /// 自定义：unix 秒区间（含头含尾）
-    Custom { from: i64, to: i64 },
+    Custom {
+        from: i64,
+        to: i64,
+    },
 }
 
 /// 看板聚合结果

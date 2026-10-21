@@ -73,7 +73,8 @@ pub struct Extra {
 
 /// 列表接口响应文本 → 领域行；业务失败（code 非 0）在解析阶段即报错
 pub fn lead_rows_from_list(body: &str) -> AppResult<Vec<LeadRow>> {
-    let resp: ListResponse = serde_json::from_str(body).map_err(|e| AppError::Message(format!("列表响应解析失败: {e}")))?;
+    let resp: ListResponse = serde_json::from_str(body)
+        .map_err(|e| AppError::Message(format!("列表响应解析失败: {e}")))?;
     if resp.status != 0 {
         return Err(AppError::remote(resp.status, &resp.message));
     }
@@ -81,11 +82,14 @@ pub fn lead_rows_from_list(body: &str) -> AppResult<Vec<LeadRow>> {
 }
 
 fn lead_item_to_row(item: &LeadItem) -> LeadRow {
-    let intention = [item.intention_series.label.as_str(), item.intention_car.label.as_str()]
-        .into_iter()
-        .filter(|s| !s.is_empty())
-        .collect::<Vec<_>>()
-        .join(" ");
+    let intention = [
+        item.intention_series.label.as_str(),
+        item.intention_car.label.as_str(),
+    ]
+    .into_iter()
+    .filter(|s| !s.is_empty())
+    .collect::<Vec<_>>()
+    .join(" ");
     LeadRow {
         leads_id: item.leads_id.clone(),
         phone: item.phone.clone(),

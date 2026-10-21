@@ -7,19 +7,41 @@ use crate::error::AppResult;
 use crate::models::LeadsFilter;
 
 /// 按筛选导出线索明细为 xlsx；返回导出行数
-pub fn export_leads(conn: &Connection, filter: &LeadsFilter, path: &std::path::Path) -> AppResult<usize> {
+pub fn export_leads(
+    conn: &Connection,
+    filter: &LeadsFilter,
+    path: &std::path::Path,
+) -> AppResult<usize> {
     // page_size=0 即不分页：导出与明细页共用同一筛选实现
     let page = crate::query::leads_page(
         conn,
-        &LeadsFilter { page: 0, page_size: 0, ..filter.clone() },
+        &LeadsFilter {
+            page: 0,
+            page_size: 0,
+            ..filter.clone()
+        },
     )?;
 
     let mut book = rust_xlsxwriter::Workbook::new();
     let sheet = book.add_worksheet();
-    sheet.set_name("线索明细").map_err(|e| crate::error::AppError::Excel(e.to_string()))?;
-    let headers = ["线索ID", "留资时间", "门店", "意向车型", "手机号", "客户姓名", "状态", "来源", "计划名称"];
+    sheet
+        .set_name("线索明细")
+        .map_err(|e| crate::error::AppError::Excel(e.to_string()))?;
+    let headers = [
+        "线索ID",
+        "留资时间",
+        "门店",
+        "意向车型",
+        "手机号",
+        "客户姓名",
+        "状态",
+        "来源",
+        "计划名称",
+    ];
     for (col, h) in headers.iter().enumerate() {
-        sheet.write(0, col as u16, *h).map_err(|e| crate::error::AppError::Excel(e.to_string()))?;
+        sheet
+            .write(0, col as u16, *h)
+            .map_err(|e| crate::error::AppError::Excel(e.to_string()))?;
     }
     for (i, r) in page.rows.iter().enumerate() {
         let time = chrono::Local
@@ -45,7 +67,8 @@ pub fn export_leads(conn: &Connection, filter: &LeadsFilter, path: &std::path::P
                 .map_err(|e| crate::error::AppError::Excel(e.to_string()))?;
         }
     }
-    book.save(path).map_err(|e| crate::error::AppError::Excel(e.to_string()))?;
+    book.save(path)
+        .map_err(|e| crate::error::AppError::Excel(e.to_string()))?;
     Ok(page.rows.len())
 }
 
@@ -74,10 +97,7 @@ mod tests {
             crate::repo::leads::upsert_leads(
                 conn,
                 1,
-                &[
-                    lead("L1", 1, 1000, "未联系"),
-                    lead("L2", 1, 2000, "已成交"),
-                ],
+                &[lead("L1", 1, 1000, "未联系"), lead("L2", 1, 2000, "已成交")],
             )?;
             crate::repo::leads::upsert_leads(conn, 2, &[lead("L4", 2, 500, "未联系")])?;
             Ok(())
@@ -89,7 +109,11 @@ mod tests {
             .with(|conn| {
                 export_leads(
                     conn,
-                    &LeadsFilter { status: Some("未联系".into()), page_size: 0, ..Default::default() },
+                    &LeadsFilter {
+                        status: Some("未联系".into()),
+                        page_size: 0,
+                        ..Default::default()
+                    },
                     &path,
                 )
             })

@@ -28,11 +28,16 @@ fn get_store(db: &Db, id: i64) -> AppResult<Store> {
 
 #[tauri::command]
 pub fn list_stores(db: State<'_, Db>) -> Result<Vec<Store>, String> {
-    db.with(|conn| repo::stores::list(conn)).map_err(err_string)
+    db.with(repo::stores::list).map_err(err_string)
 }
 
 #[tauri::command]
-pub fn add_store(db: State<'_, Db>, name: String, account: String, password: Option<String>) -> Result<Store, String> {
+pub fn add_store(
+    db: State<'_, Db>,
+    name: String,
+    account: String,
+    password: Option<String>,
+) -> Result<Store, String> {
     let name = name.trim();
     let account = account.trim();
     if name.is_empty() || account.is_empty() {
@@ -51,7 +56,8 @@ pub fn add_store(db: State<'_, Db>, name: String, account: String, password: Opt
 pub fn remove_store(db: State<'_, Db>, store_id: i64) -> Result<(), String> {
     let store = get_store(&db, store_id).map_err(err_string)?;
     credentials::delete_store(&store.account).map_err(err_string)?;
-    db.with(|conn| repo::stores::delete(conn, store_id)).map_err(err_string)
+    db.with(|conn| repo::stores::delete(conn, store_id))
+        .map_err(err_string)
 }
 
 /// 会话状态列表（设置页 + 过期角标）
@@ -69,13 +75,19 @@ pub struct StoreStatus {
 pub fn get_collection_status(db: State<'_, Db>) -> Result<Vec<StoreStatus>, String> {
     db.with(|conn| -> AppResult<Vec<StoreStatus>> {
         let states: std::collections::HashMap<i64, crate::models::PullState> =
-            repo::stores::pull_states(conn)?.into_iter().map(|s| (s.store_id, s)).collect();
+            repo::stores::pull_states(conn)?
+                .into_iter()
+                .map(|s| (s.store_id, s))
+                .collect();
         Ok(repo::stores::list(conn)?
             .into_iter()
             .map(|store| {
                 let state = states.get(&store.id);
                 StoreStatus {
-                    has_session: credentials::load_store_cookie(&store.account).ok().flatten().is_some(),
+                    has_session: credentials::load_store_cookie(&store.account)
+                        .ok()
+                        .flatten()
+                        .is_some(),
                     store: store.clone(),
                     last_success_at: state.and_then(|s| s.last_success_at),
                     last_error: state.map(|s| s.last_error.clone()).unwrap_or_default(),
@@ -105,7 +117,7 @@ pub async fn pull_now(
 ) -> Result<Vec<collector::PullOutcome>, String> {
     let stores: Vec<Store> = match store_id {
         Some(id) => vec![get_store(&db, id).map_err(err_string)?],
-        None => db.with(|conn| repo::stores::list(conn)).map_err(err_string)?,
+        None => db.with(repo::stores::list).map_err(err_string)?,
     };
     let mut outcomes = Vec::new();
     for store in stores {
@@ -115,7 +127,8 @@ pub async fn pull_now(
         let days = collector::window_days_for(backfilled);
         let outcome = collector::pull_store(&db, &clients.jd, &store, days).await;
         if outcome.ok && !backfilled {
-            db.with(|conn| repo::stores::mark_backfilled(conn, store.id)).map_err(err_string)?;
+            db.with(|conn| repo::stores::mark_backfilled(conn, store.id))
+                .map_err(err_string)?;
         }
         outcomes.push(outcome);
     }
@@ -126,29 +139,43 @@ pub async fn pull_now(
 
 #[tauri::command]
 pub fn get_leads(db: State<'_, Db>, filter: LeadsFilter) -> Result<LeadPage, String> {
-    db.with(|conn| query::leads_page(conn, &filter)).map_err(err_string)
+    db.with(|conn| query::leads_page(conn, &filter))
+        .map_err(err_string)
 }
 
 #[tauri::command]
 pub fn get_status_options(db: State<'_, Db>, store_id: Option<i64>) -> Result<Vec<String>, String> {
-    db.with(|conn| query::distinct_statuses(conn, store_id)).map_err(err_string)
+    db.with(|conn| query::distinct_statuses(conn, store_id))
+        .map_err(err_string)
 }
 
 #[tauri::command]
-pub fn get_dashboard(db: State<'_, Db>, range: Range, store_id: Option<i64>) -> Result<Dashboard, String> {
-    db.with(|conn| query::dashboard(conn, &range, store_id)).map_err(err_string)
+pub fn get_dashboard(
+    db: State<'_, Db>,
+    range: Range,
+    store_id: Option<i64>,
+) -> Result<Dashboard, String> {
+    db.with(|conn| query::dashboard(conn, &range, store_id))
+        .map_err(err_string)
 }
 
 /// 导出明细到应用数据目录，返回文件路径
 #[tauri::command]
-pub fn export_leads(app: AppHandle, db: State<'_, Db>, filter: LeadsFilter) -> Result<String, String> {
+pub fn export_leads(
+    app: AppHandle,
+    db: State<'_, Db>,
+    filter: LeadsFilter,
+) -> Result<String, String> {
     let dir = app
         .path()
         .app_data_dir()
         .map_err(|e| format!("解析数据目录失败: {e}"))?
         .join("exports");
     std::fs::create_dir_all(&dir).map_err(|e| format!("创建导出目录失败: {e}"))?;
-    let path = dir.join(format!("线索明细-{}.xlsx", chrono::Local::now().format("%Y%m%d-%H%M%S")));
+    let path = dir.join(format!(
+        "线索明细-{}.xlsx",
+        chrono::Local::now().format("%Y%m%d-%H%M%S")
+    ));
     let written = db
         .with(|conn| crate::export::export_leads(conn, &filter, &path))
         .map_err(err_string)?;
@@ -162,11 +189,16 @@ pub fn export_leads(app: AppHandle, db: State<'_, Db>, filter: LeadsFilter) -> R
 
 #[tauri::command]
 pub fn get_ocean_credentials(db: State<'_, Db>) -> Result<settings::OceanCredentials, String> {
-    db.with_sql(|conn| settings::get_ocean_credentials(conn)).map_err(err_string)
+    db.with_sql(settings::get_ocean_credentials)
+        .map_err(err_string)
 }
 
 #[tauri::command]
-pub fn save_ocean_credentials(db: State<'_, Db>, app_id: String, app_secret: String) -> Result<(), String> {
+pub fn save_ocean_credentials(
+    db: State<'_, Db>,
+    app_id: String,
+    app_secret: String,
+) -> Result<(), String> {
     let app_id = app_id.trim();
     let app_secret = app_secret.trim();
     if app_id.is_empty() || app_secret.is_empty() {
@@ -192,12 +224,19 @@ pub async fn start_ocean_auth(
         .with(|conn| {
             let creds = settings::get_ocean_credentials(conn)?;
             Ok::<_, AppError>((
-                creds.app_id.ok_or_else(|| AppError::Message("尚未配置 App ID".into()))?,
-                creds.app_secret.ok_or_else(|| AppError::Message("尚未配置 App Secret".into()))?,
+                creds
+                    .app_id
+                    .ok_or_else(|| AppError::Message("尚未配置 App ID".into()))?,
+                creds
+                    .app_secret
+                    .ok_or_else(|| AppError::Message("尚未配置 App Secret".into()))?,
             ))
         })
         .map_err(err_string)?;
-    let app_id: i64 = app_id_str.trim().parse().map_err(|_| "App ID 必须是数字".to_string())?;
+    let app_id: i64 = app_id_str
+        .trim()
+        .parse()
+        .map_err(|_| "App ID 必须是数字".to_string())?;
 
     open_browser(&ocean::authorize_url(app_id_str.trim()));
     let auth_code = wait_auth_code().await.map_err(err_string)?;
@@ -206,15 +245,25 @@ pub async fn start_ocean_auth(
         .exchange_token(app_id, &secret, &auth_code, &ocean::redirect_uri())
         .await
         .map_err(err_string)?;
-    credentials::save_ocean_tokens(&tokens.access_token, &tokens.refresh_token).map_err(err_string)?;
-    let expires_at = crate::db::now() + tokens.expires_in;
-    db.with_sql(|conn| settings::save_setting(conn, settings::KEY_OCEAN_TOKEN_EXPIRES, &expires_at.to_string()))
+    credentials::save_ocean_tokens(&tokens.access_token, &tokens.refresh_token)
         .map_err(err_string)?;
+    let expires_at = crate::db::now() + tokens.expires_in;
+    db.with_sql(|conn| {
+        settings::save_setting(
+            conn,
+            settings::KEY_OCEAN_TOKEN_EXPIRES,
+            &expires_at.to_string(),
+        )
+    })
+    .map_err(err_string)?;
 
     let accounts: Vec<AdAccount> = tokens
         .advertiser_ids
         .iter()
-        .map(|v| AdAccount { id: json_value_to_string(v), alias: String::new() })
+        .map(|v| AdAccount {
+            id: json_value_to_string(v),
+            alias: String::new(),
+        })
         .collect();
     db.with(|conn| {
         for account in &accounts {
@@ -232,7 +281,10 @@ pub fn list_ad_accounts(db: State<'_, Db>) -> Result<Vec<AdAccount>, String> {
     db.with(|conn| {
         Ok(repo::leads::ad_account_ids(conn)?
             .into_iter()
-            .map(|id| AdAccount { id, alias: String::new() })
+            .map(|id| AdAccount {
+                id,
+                alias: String::new(),
+            })
             .collect())
     })
     .map_err(err_string)
@@ -240,14 +292,20 @@ pub fn list_ad_accounts(db: State<'_, Db>) -> Result<Vec<AdAccount>, String> {
 
 /// 门店 ↔ 广告账户映射（多对多）
 #[tauri::command]
-pub fn set_store_mapping(db: State<'_, Db>, store_id: i64, ad_account_id: String, enable: bool) -> Result<(), String> {
+pub fn set_store_mapping(
+    db: State<'_, Db>,
+    store_id: i64,
+    ad_account_id: String,
+    enable: bool,
+) -> Result<(), String> {
     db.with(|conn| repo::stores::set_mapping(conn, store_id, &ad_account_id, enable))
         .map_err(err_string)
 }
 
 #[tauri::command]
 pub fn get_store_ad_accounts(db: State<'_, Db>, store_id: i64) -> Result<Vec<String>, String> {
-    db.with(|conn| repo::stores::mapping_account_ids(conn, store_id)).map_err(err_string)
+    db.with(|conn| repo::stores::mapping_account_ids(conn, store_id))
+        .map_err(err_string)
 }
 
 // ---------- 对账快照（issue #12） ----------
@@ -269,12 +327,15 @@ pub async fn run_snapshot(
 }
 
 /// 快照编排（调度器与手动触发共用）：提交导出 → 轮询完成 → 下载 → 合并
-pub async fn run_snapshots(app: &AppHandle, store_id: Option<i64>) -> AppResult<Vec<SnapshotOutcome>> {
+pub async fn run_snapshots(
+    app: &AppHandle,
+    store_id: Option<i64>,
+) -> AppResult<Vec<SnapshotOutcome>> {
     let db = app.state::<Db>();
     let clients = app.state::<Clients>();
     let stores: Vec<Store> = match store_id {
         Some(id) => vec![get_store(&db, id)?],
-        None => db.with(|conn| repo::stores::list(conn))?,
+        None => db.with(repo::stores::list)?,
     };
     let snap_dir = app
         .path()
@@ -288,8 +349,18 @@ pub async fn run_snapshots(app: &AppHandle, store_id: Option<i64>) -> AppResult<
     for store in stores {
         let outcome =
             match run_store_snapshot(&db, &clients.jd, &store, &snap_dir, &today, now).await {
-                Ok(seen) => SnapshotOutcome { store_id: store.id, ok: true, seen, error: String::new() },
-                Err(e) => SnapshotOutcome { store_id: store.id, ok: false, seen: 0, error: e.to_string() },
+                Ok(seen) => SnapshotOutcome {
+                    store_id: store.id,
+                    ok: true,
+                    seen,
+                    error: String::new(),
+                },
+                Err(e) => SnapshotOutcome {
+                    store_id: store.id,
+                    ok: false,
+                    seen: 0,
+                    error: e.to_string(),
+                },
             };
         outcomes.push(outcome);
     }
@@ -323,7 +394,8 @@ async fn run_store_snapshot(
     let bytes = jd.download_export(&cookie, &task_id).await?;
     let path = dir.join(format!("{today}-{}.xlsx", store.id));
     std::fs::write(&path, &bytes)?;
-    db.with(|conn| snapshot::reconcile(conn, store.id, &path)).map(|s| s.seen)
+    db.with(|conn| snapshot::reconcile(conn, store.id, &path))
+        .map(|s| s.seen)
 }
 
 // ---------- 快照时刻设置 ----------
@@ -359,7 +431,9 @@ fn json_value_to_string(v: &serde_json::Value) -> String {
 fn open_browser(url: &str) {
     #[cfg(target_os = "windows")]
     {
-        let _ = std::process::Command::new("cmd").args(["/C", "start", "", url]).spawn();
+        let _ = std::process::Command::new("cmd")
+            .args(["/C", "start", "", url])
+            .spawn();
     }
     #[cfg(target_os = "macos")]
     {
@@ -398,7 +472,8 @@ async fn wait_auth_code() -> AppResult<String> {
     if code.is_empty() {
         return Err(AppError::Message("回调未携带授权码".into()));
     }
-    let response = "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\n\r\n授权成功，可关闭此页面。";
+    let response =
+        "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\n\r\n授权成功，可关闭此页面。";
     let _ = stream.write_all(response.as_bytes()).await;
     Ok(percent_decode(code))
 }

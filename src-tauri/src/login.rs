@@ -25,12 +25,19 @@ pub struct LoginEvent {
 }
 
 /// 打开登录窗口并启动捕获任务；重复调用先关旧窗
-pub fn open_login(app: &AppHandle, store_id: i64, account: &str, password: Option<String>) -> AppResult<()> {
+pub fn open_login(
+    app: &AppHandle,
+    store_id: i64,
+    account: &str,
+    password: Option<String>,
+) -> AppResult<()> {
     let label = format!("login-{store_id}");
     if let Some(existing) = app.get_webview_window(&label) {
         let _ = existing.close();
     }
-    let url: tauri::Url = START_URL.parse().map_err(|e| AppError::Message(format!("URL 解析失败: {e}")))?;
+    let url: tauri::Url = START_URL
+        .parse()
+        .map_err(|e| AppError::Message(format!("URL 解析失败: {e}")))?;
     WebviewWindowBuilder::new(app, &label, WebviewUrl::External(url))
         .title(format!("巨懂车登录 - {}", account))
         .inner_size(1100.0, 800.0)
@@ -43,18 +50,27 @@ pub fn open_login(app: &AppHandle, store_id: i64, account: &str, password: Optio
     Ok(())
 }
 
-async fn capture_session(app: &AppHandle, store_id: i64, label: String, account: &str, password: Option<String>) {
+async fn capture_session(
+    app: &AppHandle,
+    store_id: i64,
+    label: String,
+    account: &str,
+    password: Option<String>,
+) {
     let mut autofilled = false;
     let mut human_notified = false;
     for attempt in 0..MAX_POLLS {
         tokio::time::sleep(std::time::Duration::from_millis(POLL_INTERVAL_MS)).await;
         let Some(window) = app.get_webview_window(&label) else {
             // 用户手动关窗：视为放弃
-            let _ = app.emit("login://result", LoginEvent {
-                store_id,
-                ok: false,
-                message: "登录窗口被关闭".into(),
-            });
+            let _ = app.emit(
+                "login://result",
+                LoginEvent {
+                    store_id,
+                    ok: false,
+                    message: "登录窗口被关闭".into(),
+                },
+            );
             return;
         };
         // 密码自动回填：等页面渲染后注入一次（滑块/短信仍需真人）
@@ -62,7 +78,7 @@ async fn capture_session(app: &AppHandle, store_id: i64, label: String, account:
             if !autofilled && attempt == 2 {
                 autofilled = true;
                 let account = account.to_string();
-                let _ = window.eval(&autofill_script(&account, &password));
+                let _ = window.eval(autofill_script(&account, &password));
             }
             // 回填已做但 60 秒仍无会话：大概率被滑块/风控拦下，主动提醒人工介入
             if autofilled && !human_notified && attempt == 32 {
@@ -82,24 +98,37 @@ async fn capture_session(app: &AppHandle, store_id: i64, label: String, account:
                 .join("; ");
             if jar.contains(&format!("{CRM_COOKIE}=")) {
                 if let Err(e) = credentials::save_store_cookie(account, &jar) {
-                    let _ = app.emit("login://result", LoginEvent { store_id, ok: false, message: e.to_string() });
+                    let _ = app.emit(
+                        "login://result",
+                        LoginEvent {
+                            store_id,
+                            ok: false,
+                            message: e.to_string(),
+                        },
+                    );
                     return;
                 }
                 let _ = window.close();
-                let _ = app.emit("login://result", LoginEvent {
-                    store_id,
-                    ok: true,
-                    message: "会话已捕获".into(),
-                });
+                let _ = app.emit(
+                    "login://result",
+                    LoginEvent {
+                        store_id,
+                        ok: true,
+                        message: "会话已捕获".into(),
+                    },
+                );
                 return;
             }
         }
     }
-    let _ = app.emit("login://result", LoginEvent {
-        store_id,
-        ok: false,
-        message: "登录超时：未捕获到会话，请重试".into(),
-    });
+    let _ = app.emit(
+        "login://result",
+        LoginEvent {
+            store_id,
+            ok: false,
+            message: "登录超时：未捕获到会话，请重试".into(),
+        },
+    );
     if let Some(window) = app.get_webview_window(&label) {
         let _ = window.close();
     }
@@ -132,5 +161,7 @@ fn autofill_script(account: &str, password: &str) -> String {
 }
 
 fn js_escape(s: &str) -> String {
-    s.replace('\\', "\\\\").replace('\'', "\\'").replace('"', "\\\"")
+    s.replace('\\', "\\\\")
+        .replace('\'', "\\'")
+        .replace('"', "\\\"")
 }

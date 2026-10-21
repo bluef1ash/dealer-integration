@@ -18,7 +18,9 @@ impl Db {
         conn.pragma_update(None, "journal_mode", "WAL")?;
         conn.execute_batch(SCHEMA)?;
         Self::migrate(&conn);
-        Ok(Self { conn: Mutex::new(conn) })
+        Ok(Self {
+            conn: Mutex::new(conn),
+        })
     }
 
     /// 渐进迁移：已建库补列（CREATE TABLE IF NOT EXISTS 不会更新既有表）
@@ -28,7 +30,8 @@ impl Db {
             let _ = conn.execute_batch(sql);
         };
         add_column("ALTER TABLE leads ADD COLUMN feiyu_leads_id TEXT NOT NULL DEFAULT ''");
-        let _ = conn.execute_batch("CREATE INDEX IF NOT EXISTS idx_leads_feiyu ON leads(feiyu_leads_id)");
+        let _ = conn
+            .execute_batch("CREATE INDEX IF NOT EXISTS idx_leads_feiyu ON leads(feiyu_leads_id)");
     }
 
     /// 内存库：测试与一次性工具用
@@ -36,12 +39,17 @@ impl Db {
         let conn = Connection::open_in_memory().expect("打开内存库");
         conn.execute_batch(SCHEMA).expect("执行建表");
         Self::migrate(&conn);
-        Self { conn: Mutex::new(conn) }
+        Self {
+            conn: Mutex::new(conn),
+        }
     }
 
     /// 串行化访问连接；锁中毒视为不可恢复错误
     pub fn with<T>(&self, f: impl FnOnce(&Connection) -> AppResult<T>) -> AppResult<T> {
-        let conn = self.conn.lock().map_err(|_| AppError::Message("数据库连接锁中毒".into()))?;
+        let conn = self
+            .conn
+            .lock()
+            .map_err(|_| AppError::Message("数据库连接锁中毒".into()))?;
         f(&conn)
     }
 
