@@ -5,7 +5,7 @@
 }
 
 body {
-  font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
   color: #1f2937;
   background: #fafaf9;
   /* 桌面应用：禁止文本意外选中与滚动回弹 */

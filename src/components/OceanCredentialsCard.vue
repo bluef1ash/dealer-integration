@@ -1,45 +1,45 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
-import { api } from '../api';
+import { onMounted, ref } from 'vue'
+import { api } from '../api'
 
-const appId = ref('');
-const appSecret = ref('');
+const appId = ref('')
+const appSecret = ref('')
 /** 库中是否已保存过凭证（决定副标题文案） */
-const configured = ref(false);
-const loadError = ref('');
-const saving = ref(false);
-const formError = ref('');
-const justSaved = ref(false);
+const configured = ref(false)
+const loadError = ref('')
+const saving = ref(false)
+const formError = ref('')
+const justSaved = ref(false)
 
 onMounted(async () => {
   try {
-    const c = await api.getOceanCredentials();
-    appId.value = c.appId ?? '';
-    appSecret.value = c.appSecret ?? '';
-    configured.value = true;
+    const c = await api.getOceanCredentials()
+    appId.value = c.appId ?? ''
+    appSecret.value = c.appSecret ?? ''
+    configured.value = true
   } catch (e) {
-    loadError.value = String(e);
+    loadError.value = String(e)
   }
-});
+})
 
 async function save() {
-  formError.value = '';
-  justSaved.value = false;
-  const id = appId.value.trim();
-  const secret = appSecret.value.trim();
+  formError.value = ''
+  justSaved.value = false
+  const id = appId.value.trim()
+  const secret = appSecret.value.trim()
   if (!id || !secret) {
-    formError.value = 'App ID 与 App Secret 均不能为空';
-    return;
+    formError.value = 'App ID 与 App Secret 均不能为空'
+    return
   }
-  saving.value = true;
+  saving.value = true
   try {
-    await api.saveOceanCredentials(id, secret);
-    configured.value = true;
-    justSaved.value = true;
+    await api.saveOceanCredentials(id, secret)
+    configured.value = true
+    justSaved.value = true
   } catch (e) {
-    formError.value = String(e);
+    formError.value = String(e)
   } finally {
-    saving.value = false;
+    saving.value = false
   }
 }
 </script>

@@ -1,97 +1,106 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
-import DataState from '../components/DataState.vue';
-import { api } from '../api';
-import type { FetchState, LeadPage, LeadsFilter, Store } from '../types';
-import { fmtFull } from '../utils';
+import { onMounted, ref } from 'vue'
+import { api } from '../api'
+import DataState from '../components/DataState.vue'
+import type { FetchState, LeadPage, LeadsFilter, Store } from '../types'
+import { fmtFull } from '../utils'
 
-const PAGE_SIZE = 20;
-const state = ref<FetchState>('loading');
-const errorMsg = ref('');
-const stores = ref<Store[]>([]);
-const statuses = ref<string[]>([]);
-const data = ref<LeadPage | null>(null);
-const exporting = ref(false);
+const PAGE_SIZE = 20
+const state = ref<FetchState>('loading')
+const errorMsg = ref('')
+const stores = ref<Store[]>([])
+const statuses = ref<string[]>([])
+const data = ref<LeadPage | null>(null)
+const exporting = ref(false)
 
-const storeId = ref<number | null>(null);
-const status = ref<string | null>(null);
-type Period = 'Today' | 'Last7' | 'Last30' | 'All';
-const period = ref<Period>('Last7');
-const page = ref(0);
-const totalPages = ref(0);
+const storeId = ref<number | null>(null)
+const status = ref<string | null>(null)
+type Period = 'Today' | 'Last7' | 'Last30' | 'All'
+const period = ref<Period>('Last7')
+const page = ref(0)
+const totalPages = ref(0)
 
 function currentFilter(): LeadsFilter {
-  const now = Math.floor(Date.now() / 1000);
-  const dayStart = Math.floor(new Date(new Date().setHours(0, 0, 0, 0)).getTime() / 1000);
+  const now = Math.floor(Date.now() / 1000)
+  const dayStart = Math.floor(new Date(new Date().setHours(0, 0, 0, 0)).getTime() / 1000)
   const bounds: Record<Period, [number | null, number | null]> = {
     Today: [dayStart, now],
     Last7: [dayStart - 6 * 86400, now],
     Last30: [dayStart - 29 * 86400, now],
     All: [null, null],
-  };
-  const [from, to] = bounds[period.value];
-  return { store_id: storeId.value, status: status.value, from, to, page: page.value, page_size: PAGE_SIZE };
+  }
+  const [from, to] = bounds[period.value]
+  return {
+    store_id: storeId.value,
+    status: status.value,
+    from,
+    to,
+    page: page.value,
+    page_size: PAGE_SIZE,
+  }
 }
 
 async function load(): Promise<void> {
-  state.value = 'loading';
-  errorMsg.value = '';
+  state.value = 'loading'
+  errorMsg.value = ''
   try {
-    data.value = await api.getLeads(currentFilter());
-    totalPages.value = Math.max(1, Math.ceil(data.value.total / PAGE_SIZE));
-    state.value = data.value.total === 0 ? 'empty' : 'ready';
+    data.value = await api.getLeads(currentFilter())
+    totalPages.value = Math.max(1, Math.ceil(data.value.total / PAGE_SIZE))
+    state.value = data.value.total === 0 ? 'empty' : 'ready'
   } catch (e) {
-    state.value = 'error';
-    errorMsg.value = String(e);
+    state.value = 'error'
+    errorMsg.value = String(e)
   }
 }
 
 function switchPeriod(p: Period): void {
-  period.value = p;
-  page.value = 0;
-  void load();
+  period.value = p
+  page.value = 0
+  void load()
 }
 
 function switchStore(): void {
-  page.value = 0;
-  void load();
+  page.value = 0
+  void load()
 }
 
 async function switchStatus(): Promise<void> {
-  page.value = 0;
-  void load();
+  page.value = 0
+  void load()
 }
 
 async function go(delta: number): Promise<void> {
-  const next = page.value + delta;
-  if (next < 0 || next >= totalPages.value) return;
-  page.value = next;
-  await load();
+  const next = page.value + delta
+  if (next < 0 || next >= totalPages.value) {
+    return
+  }
+  page.value = next
+  await load()
 }
 
 async function exportExcel(): Promise<void> {
-  exporting.value = true;
+  exporting.value = true
   try {
-    const path = await api.exportLeads(currentFilter());
-    window.alert(`已导出：\n${path}`);
+    const path = await api.exportLeads(currentFilter())
+    window.alert(`已导出：\n${path}`)
   } catch (e) {
-    window.alert(`导出失败：${e}`);
+    window.alert(`导出失败：${e}`)
   } finally {
-    exporting.value = false;
+    exporting.value = false
   }
 }
 
 onMounted(async () => {
   try {
-    stores.value = await api.listStores();
-    statuses.value = await api.getStatusOptions(null);
+    stores.value = await api.listStores()
+    statuses.value = await api.getStatusOptions(null)
   } catch (e) {
-    state.value = 'error';
-    errorMsg.value = String(e);
-    return;
+    state.value = 'error'
+    errorMsg.value = String(e)
+    return
   }
-  await load();
-});
+  await load()
+})
 </script>
 
 <template>

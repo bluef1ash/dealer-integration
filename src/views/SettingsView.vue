@@ -1,154 +1,171 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from 'vue';
-import { listen } from '@tauri-apps/api/event';
-import DataState from '../components/DataState.vue';
-import OceanCredentialsCard from '../components/OceanCredentialsCard.vue';
-import { api } from '../api';
-import type { AdAccount, FetchState, LoginEvent, SnapshotOutcome, StoreStatus } from '../types';
-import { fmtTime } from '../utils';
+import { listen } from '@tauri-apps/api/event'
+import { onMounted, onUnmounted, ref } from 'vue'
+import { api } from '../api'
+import DataState from '../components/DataState.vue'
+import OceanCredentialsCard from '../components/OceanCredentialsCard.vue'
+import type { AdAccount, FetchState, LoginEvent, SnapshotOutcome, StoreStatus } from '../types'
+import { fmtTime } from '../utils'
 
-const state = ref<FetchState>('loading');
-const statuses = ref<StoreStatus[]>([]);
-const accounts = ref<AdAccount[]>([]);
+const state = ref<FetchState>('loading')
+const statuses = ref<StoreStatus[]>([])
+const accounts = ref<AdAccount[]>([])
 /** store_id → 已映射账户 ID 集合 */
-const mappings = ref<Map<number, Set<string>>>(new Map());
-const loginHint = ref('');
-const humanHint = ref('');
-const snapshotResults = ref<SnapshotOutcome[]>([]);
+const mappings = ref<Map<number, Set<string>>>(new Map())
+const loginHint = ref('')
+const humanHint = ref('')
+const snapshotResults = ref<SnapshotOutcome[]>([])
 
 // 添加门店表单
-const newName = ref('');
-const newAccount = ref('');
-const newPassword = ref('');
-const adding = ref(false);
+const newName = ref('')
+const newAccount = ref('')
+const newPassword = ref('')
+const adding = ref(false)
 
-const snapshotHour = ref(23);
-const pullingId = ref<number | null>(null);
+const snapshotHour = ref(23)
+const pullingId = ref<number | null>(null)
 
-let unlisteners: Array<() => void> = [];
+let unlisteners: Array<() => void> = []
 
 async function refresh(): Promise<void> {
-  state.value = 'loading';
+  state.value = 'loading'
   try {
-    statuses.value = await api.getCollectionStatus();
-    accounts.value = await api.listAdAccounts();
-    const map = new Map<number, Set<string>>();
+    statuses.value = await api.getCollectionStatus()
+    accounts.value = await api.listAdAccounts()
+    const map = new Map<number, Set<string>>()
     for (const s of statuses.value) {
-      map.set(s.store.id, new Set(await api.getStoreAdAccounts(s.store.id)));
+      map.set(s.store.id, new Set(await api.getStoreAdAccounts(s.store.id)))
     }
-    mappings.value = map;
-    snapshotHour.value = await api.getSnapshotHour();
-    state.value = 'ready';
+    mappings.value = map
+    snapshotHour.value = await api.getSnapshotHour()
+    state.value = 'ready'
   } catch (e) {
-    state.value = 'error';
-    loadError.value = String(e);
+    state.value = 'error'
+    loadError.value = String(e)
   }
 }
 
-const loadError = ref('');
+const loadError = ref('')
 
 async function addStore(): Promise<void> {
   if (!newName.value.trim() || !newAccount.value.trim()) {
-    loginHint.value = '门店名称与账号标识不能为空';
-    return;
+    loginHint.value = '门店名称与账号标识不能为空'
+    return
   }
-  adding.value = true;
+  adding.value = true
   try {
-    await api.addStore(newName.value.trim(), newAccount.value.trim(), newPassword.value.trim() || null);
-    newName.value = '';
-    newAccount.value = '';
-    newPassword.value = '';
-    loginHint.value = '门店已添加，点「登录」完成巨懂车授权';
-    await refresh();
+    await api.addStore(
+      newName.value.trim(),
+      newAccount.value.trim(),
+      newPassword.value.trim() || null,
+    )
+    newName.value = ''
+    newAccount.value = ''
+    newPassword.value = ''
+    loginHint.value = '门店已添加，点「登录」完成巨懂车授权'
+    await refresh()
   } catch (e) {
-    loginHint.value = `添加失败：${e}`;
+    loginHint.value = `添加失败：${e}`
   } finally {
-    adding.value = false;
+    adding.value = false
   }
 }
 
 async function removeStore(s: StoreStatus): Promise<void> {
-  if (!window.confirm(`删除门店「${s.store.name}」？其登录凭证将一并清除。`)) return;
-  await api.removeStore(s.store.id);
-  await refresh();
+  if (!window.confirm(`删除门店「${s.store.name}」？其登录凭证将一并清除。`)) {
+    return
+  }
+  await api.removeStore(s.store.id)
+  await refresh()
 }
 
 async function startLogin(s: StoreStatus): Promise<void> {
-  loginHint.value = `已打开登录窗口（${s.store.name}），请在窗口内完成登录…`;
-  humanHint.value = '';
+  loginHint.value = `已打开登录窗口（${s.store.name}），请在窗口内完成登录…`
+  humanHint.value = ''
   try {
-    await api.startLogin(s.store.id);
+    await api.startLogin(s.store.id)
   } catch (e) {
-    loginHint.value = `发起登录失败：${e}`;
+    loginHint.value = `发起登录失败：${e}`
   }
 }
 
 async function pullOne(s: StoreStatus): Promise<void> {
-  pullingId.value = s.store.id;
+  pullingId.value = s.store.id
   try {
-    const outcomes = await api.pullNow(s.store.id);
-    const o = outcomes[0];
+    const outcomes = await api.pullNow(s.store.id)
+    const o = outcomes[0]
     loginHint.value = o?.ok
       ? `「${s.store.name}」入库 ${o.ingested} 条`
-      : `「${s.store.name}」拉取失败：${o?.error ?? ''}`;
-    await refresh();
+      : `「${s.store.name}」拉取失败：${o?.error ?? ''}`
+    await refresh()
   } finally {
-    pullingId.value = null;
+    pullingId.value = null
   }
 }
 
 async function authorizeOcean(): Promise<void> {
-  loginHint.value = '已打开系统浏览器完成巨量引擎授权…';
+  loginHint.value = '已打开系统浏览器完成巨量引擎授权…'
   try {
-    const result = await api.startOceanAuth();
-    loginHint.value = `授权成功，同步到 ${result.accounts.length} 个广告账户`;
-    await refresh();
+    const result = await api.startOceanAuth()
+    loginHint.value = `授权成功，同步到 ${result.accounts.length} 个广告账户`
+    await refresh()
   } catch (e) {
-    loginHint.value = `授权失败：${e}`;
+    loginHint.value = `授权失败：${e}`
   }
 }
 
 async function toggleMapping(s: StoreStatus, accountId: string, checked: boolean): Promise<void> {
-  await api.setStoreMapping(s.store.id, accountId, checked);
-  mappings.value.get(s.store.id)?.[checked ? 'add' : 'delete'](accountId);
+  await api.setStoreMapping(s.store.id, accountId, checked)
+  mappings.value.get(s.store.id)?.[checked ? 'add' : 'delete'](accountId)
 }
 
 async function saveHour(): Promise<void> {
-  await api.setSnapshotHour(snapshotHour.value);
-  loginHint.value = `对账快照时刻已设为每天 ${snapshotHour.value}:00`;
+  await api.setSnapshotHour(snapshotHour.value)
+  loginHint.value = `对账快照时刻已设为每天 ${snapshotHour.value}:00`
 }
 
-const snapRunning = ref(false);
+const snapRunning = ref(false)
 async function snapshotNow(): Promise<void> {
-  snapRunning.value = true;
-  snapshotResults.value = [];
+  snapRunning.value = true
+  snapshotResults.value = []
   try {
-    snapshotResults.value = await api.runSnapshot(null);
-    loginHint.value = '对账快照执行完毕';
+    snapshotResults.value = await api.runSnapshot(null)
+    loginHint.value = '对账快照执行完毕'
   } catch (e) {
-    loginHint.value = `快照失败：${e}`;
+    loginHint.value = `快照失败：${e}`
   } finally {
-    snapRunning.value = false;
+    snapRunning.value = false
   }
 }
 
 onMounted(async () => {
-  await refresh();
+  await refresh()
   unlisteners.push(
     await listen<LoginEvent>('login://result', async (e) => {
-      const { store_id, ok, message } = e.payload;
-      const name = statuses.value.find((s) => s.store.id === store_id)?.store.name ?? `门店${store_id}`;
-      loginHint.value = ok ? `「${name}」${message}，会话已保存` : `「${name}」登录未完成：${message}`;
-      if (ok) await refresh();
+      const { store_id, ok, message } = e.payload
+      const name =
+        statuses.value.find((s) => s.store.id === store_id)?.store.name ?? `门店${store_id}`
+      loginHint.value = ok
+        ? `「${name}」${message}，会话已保存`
+        : `「${name}」登录未完成：${message}`
+      if (ok) {
+        await refresh()
+      }
     }),
     await listen<{ store_id: number; reason: string }>('login://needs-human', async (e) => {
-      const name = statuses.value.find((s) => s.store.id === e.payload.store_id)?.store.name ?? `门店${e.payload.store_id}`;
-      humanHint.value = `「${name}」${e.payload.reason}：请到设置页点「登录」完成人工验证。`;
+      const name =
+        statuses.value.find((s) => s.store.id === e.payload.store_id)?.store.name ??
+        `门店${e.payload.store_id}`
+      humanHint.value = `「${name}」${e.payload.reason}：请到设置页点「登录」完成人工验证。`
     }),
-  );
-});
+  )
+})
 
-onUnmounted(() => unlisteners.forEach((off) => off()));
+onUnmounted(() => {
+  for (const off of unlisteners) {
+    off()
+  }
+})
 </script>
 
 <template>

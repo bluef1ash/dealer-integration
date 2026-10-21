@@ -1,75 +1,75 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
-import DataState from '../components/DataState.vue';
-import SparkLine from '../components/SparkLine.vue';
-import { api } from '../api';
-import type { Dashboard as Dash, FetchState, Range, Store } from '../types';
-import { cpl, fmtTime, shortName, yuan } from '../utils';
+import { onMounted, ref } from 'vue'
+import { api } from '../api'
+import DataState from '../components/DataState.vue'
+import SparkLine from '../components/SparkLine.vue'
+import type { Dashboard as Dash, FetchState, Range, Store } from '../types'
+import { cpl, fmtTime, shortName, yuan } from '../utils'
 
-const state = ref<FetchState>('loading');
-const stores = ref<Store[]>([]);
-const storeId = ref<number | null>(null);
-const errorMsg = ref('');
-const dash = ref<Dash | null>(null);
-const pulling = ref(false);
-const pullMsg = ref('');
+const state = ref<FetchState>('loading')
+const stores = ref<Store[]>([])
+const storeId = ref<number | null>(null)
+const errorMsg = ref('')
+const dash = ref<Dash | null>(null)
+const pulling = ref(false)
+const pullMsg = ref('')
 
-type RangeKey = 'Today' | 'Last7' | 'Last30' | 'Custom';
-const rangeKey = ref<RangeKey>('Today');
-const customFrom = ref('');
-const customTo = ref('');
+type RangeKey = 'Today' | 'Last7' | 'Last30' | 'Custom'
+const rangeKey = ref<RangeKey>('Today')
+const customFrom = ref('')
+const customTo = ref('')
 
 function buildRange(): Range {
   if (rangeKey.value === 'Custom') {
-    const from = Math.floor(new Date(`${customFrom.value}T00:00:00`).getTime() / 1000);
-    const to = Math.floor(new Date(`${customTo.value}T23:59:59`).getTime() / 1000);
-    return { kind: 'Custom', value: { from, to } };
+    const from = Math.floor(new Date(`${customFrom.value}T00:00:00`).getTime() / 1000)
+    const to = Math.floor(new Date(`${customTo.value}T23:59:59`).getTime() / 1000)
+    return { kind: 'Custom', value: { from, to } }
   }
-  return { kind: rangeKey.value };
+  return { kind: rangeKey.value }
 }
 
 async function load(): Promise<void> {
-  state.value = 'loading';
-  errorMsg.value = '';
+  state.value = 'loading'
+  errorMsg.value = ''
   try {
-    dash.value = await api.getDashboard(buildRange(), storeId.value);
-    state.value = dash.value.store_cards.length === 0 ? 'empty' : 'ready';
+    dash.value = await api.getDashboard(buildRange(), storeId.value)
+    state.value = dash.value.store_cards.length === 0 ? 'empty' : 'ready'
   } catch (e) {
-    state.value = 'error';
-    errorMsg.value = String(e);
+    state.value = 'error'
+    errorMsg.value = String(e)
   }
 }
 
 function switchRange(key: RangeKey): void {
   if (key === 'Custom') {
-    rangeKey.value = 'Custom';
-    return; // 等用户选好日期点查询
+    rangeKey.value = 'Custom'
+    return // 等用户选好日期点查询
   }
-  rangeKey.value = key;
-  void load();
+  rangeKey.value = key
+  void load()
 }
 
 async function pullNow(): Promise<void> {
-  pulling.value = true;
-  pullMsg.value = '';
+  pulling.value = true
+  pullMsg.value = ''
   try {
-    const outcomes = await api.pullNow(null);
-    const ok = outcomes.filter((o) => o.ok);
+    const outcomes = await api.pullNow(null)
+    const ok = outcomes.filter((o) => o.ok)
     pullMsg.value = ok.length
       ? `已拉取 ${ok.length} 店、入库 ${ok.reduce((n, o) => n + o.ingested, 0)} 条`
-      : `拉取失败：${outcomes[0]?.error ?? '无门店'}`;
-    await load();
+      : `拉取失败：${outcomes[0]?.error ?? '无门店'}`
+    await load()
   } catch (e) {
-    pullMsg.value = String(e);
+    pullMsg.value = String(e)
   } finally {
-    pulling.value = false;
+    pulling.value = false
   }
 }
 
 onMounted(async () => {
-  stores.value = await api.listStores().catch(() => []);
-  await load();
-});
+  stores.value = await api.listStores().catch(() => [])
+  await load()
+})
 </script>
 
 <template>

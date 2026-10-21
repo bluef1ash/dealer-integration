@@ -1,16 +1,16 @@
 <script setup lang="ts">
-import { ref } from 'vue';
-import DashboardView from './views/DashboardView.vue';
-import LeadsView from './views/LeadsView.vue';
-import SettingsView from './views/SettingsView.vue';
+import { ref } from 'vue'
+import DashboardView from './views/DashboardView.vue'
+import LeadsView from './views/LeadsView.vue'
+import SettingsView from './views/SettingsView.vue'
 
-type Page = 'dash' | 'leads' | 'settings';
+type Page = 'dash' | 'leads' | 'settings'
 const TABS: Array<{ key: Page; label: string }> = [
   { key: 'dash', label: '看板' },
   { key: 'leads', label: '线索明细' },
   { key: 'settings', label: '设置' },
-];
-const page = ref<Page>('dash');
+]
+const page = ref<Page>('dash')
 </script>
 
 <template>

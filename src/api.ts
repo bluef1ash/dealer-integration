@@ -1,5 +1,5 @@
 /** Tauri command 的类型化封装：视图只经此层与后端通信 */
-import { invoke } from '@tauri-apps/api/core';
+import { invoke } from '@tauri-apps/api/core'
 import type {
   AdAccount,
   Dashboard,
@@ -11,7 +11,7 @@ import type {
   SnapshotOutcome,
   Store,
   StoreStatus,
-} from './types';
+} from './types'
 
 export const api = {
   listStores: () => invoke<Store[]>('list_stores'),
@@ -23,7 +23,8 @@ export const api = {
   pullNow: (storeId: number | null) => invoke<PullOutcome[]>('pull_now', { storeId }),
   getLeads: (filter: LeadsFilter) => invoke<LeadPage>('get_leads', { filter }),
   getStatusOptions: (storeId: number | null) => invoke<string[]>('get_status_options', { storeId }),
-  getDashboard: (range: Range, storeId: number | null) => invoke<Dashboard>('get_dashboard', { range, storeId }),
+  getDashboard: (range: Range, storeId: number | null) =>
+    invoke<Dashboard>('get_dashboard', { range, storeId }),
   exportLeads: (filter: LeadsFilter) => invoke<string>('export_leads', { filter }),
   getOceanCredentials: () => invoke<OceanCredentials>('get_ocean_credentials'),
   saveOceanCredentials: (appId: string, appSecret: string) =>
@@ -36,4 +37,4 @@ export const api = {
   runSnapshot: (storeId: number | null) => invoke<SnapshotOutcome[]>('run_snapshot', { storeId }),
   setSnapshotHour: (hour: number) => invoke<void>('set_snapshot_hour', { hour }),
   getSnapshotHour: () => invoke<number>('get_snapshot_hour'),
-};
+}
