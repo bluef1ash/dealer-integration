@@ -286,7 +286,6 @@ mod tests {
     use super::*;
     use crate::db::Db;
     use crate::models::{AdReportRow, LeadRow, PlanReportRow};
-    use chrono::TimeZone as _;
 
     /// 确定性时间基准：以今天零点为锚，构造跨今天的日期数据
     fn today_start() -> i64 {

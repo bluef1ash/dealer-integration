@@ -17,6 +17,16 @@ cargo fmt             # Rust 格式化（配置见根目录 rustfmt.toml）
 
 注意：clippy 与 rustfmt 位于 Rust 发行版的 `clippy-preview/bin`、`rustfmt-preview/bin` 目录，需加入 PATH 后才能直接调用（本机示例：`D:\environment\rust\clippy-preview\bin`）。
 
+### 提交钩子
+
+`githooks/pre-commit` 在每次提交前依次跑 `pnpm typecheck`、`cargo fmt --check`、`cargo clippy`、`cargo test`。启用（每台机器一次）：
+
+```bash
+git config core.hooksPath githooks
+```
+
+紧急跳过用 `git commit --no-verify`（逃生口只在提交命令上，代码内不允许压制检测）。
+
 注意：`pnpm tauri dev/build` 需要目标平台的系统依赖（Windows: WebView2；macOS: Xcode CLT；Linux: webkit2gtk-4.0/4.1 开发库），不能跨平台交叉编译——各平台在其本机出包。
 
 ## 文档

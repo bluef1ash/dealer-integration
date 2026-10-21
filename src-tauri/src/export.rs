@@ -78,7 +78,7 @@ mod tests {
     use crate::db::Db;
     use crate::models::LeadRow;
 
-    fn lead(id: &str, store: i64, time: i64, status: &str) -> LeadRow {
+    fn lead(id: &str, _store: i64, time: i64, status: &str) -> LeadRow {
         LeadRow {
             leads_id: id.into(),
             phone: format!("13800012{n:03}", n = id.len()),
