@@ -12,6 +12,8 @@
 | `ocean.app_secret` | 巨量引擎商业开放平台 App Secret | 设置页 |
 | `ocean.token.expires_at` | OAuth token 过期时间（unix 秒） | 调度器 |
 | `snapshot.hour` | 每日对账快照触发小时（0-23，默认 23） | 设置页 |
+| `scheduler.enabled` | 自动拉取开关（`1`/`0`，默认开） | 设置页 |
+| `scheduler.interval_minutes` | 自动拉取间隔分钟（15-1440，默认 60） | 设置页 |
 
 ```sql
 CREATE TABLE IF NOT EXISTS settings (

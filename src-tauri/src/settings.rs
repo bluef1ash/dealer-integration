@@ -9,6 +9,10 @@ const KEY_APP_SECRET: &str = "ocean.app_secret";
 pub const KEY_SNAPSHOT_HOUR: &str = "snapshot.hour";
 /// 巨量 OAuth token 过期时间（unix 秒）
 pub const KEY_OCEAN_TOKEN_EXPIRES: &str = "ocean.token.expires_at";
+/// 自动拉取开关（默认开）
+pub const KEY_SCHEDULER_ENABLED: &str = "scheduler.enabled";
+/// 自动拉取间隔（分钟，默认 60）
+pub const KEY_SCHEDULER_INTERVAL: &str = "scheduler.interval_minutes";
 
 /// 巨量引擎开放平台应用凭证（设置页维护；None 表示从未保存过）
 #[derive(Debug, Serialize)]

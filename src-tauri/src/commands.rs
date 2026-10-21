@@ -416,6 +416,39 @@ pub fn set_snapshot_hour(db: State<'_, Db>, hour: i32) -> Result<(), String> {
         .map_err(err_string)
 }
 
+// ---------- 自动拉取配置（issue #10 设置页控件） ----------
+
+#[tauri::command]
+pub fn get_scheduler_config(
+    db: State<'_, Db>,
+) -> Result<crate::scheduler::SchedulerConfig, String> {
+    Ok(crate::scheduler::read_config(&db))
+}
+
+#[tauri::command]
+pub fn set_scheduler_config(
+    db: State<'_, Db>,
+    enabled: bool,
+    interval_minutes: i64,
+) -> Result<(), String> {
+    if !(15..=1440).contains(&interval_minutes) {
+        return Err("拉取间隔须在 15-1440 分钟之间".into());
+    }
+    db.with_sql(|conn| {
+        settings::save_setting(
+            conn,
+            settings::KEY_SCHEDULER_ENABLED,
+            if enabled { "1" } else { "0" },
+        )?;
+        settings::save_setting(
+            conn,
+            settings::KEY_SCHEDULER_INTERVAL,
+            &interval_minutes.to_string(),
+        )
+    })
+    .map_err(err_string)
+}
+
 #[tauri::command]
 pub fn get_snapshot_hour(db: State<'_, Db>) -> Result<i32, String> {
     db.with(|conn| {

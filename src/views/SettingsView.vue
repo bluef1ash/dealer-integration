@@ -23,6 +23,14 @@ const newPassword = ref('')
 const adding = ref(false)
 
 const snapshotHour = ref(23)
+const schedEnabled = ref(true)
+const schedInterval = ref(60)
+const INTERVAL_OPTIONS = [
+  { value: 30, label: '每 30 分钟' },
+  { value: 60, label: '每 1 小时' },
+  { value: 120, label: '每 2 小时' },
+  { value: 180, label: '每 3 小时' },
+]
 const pullingId = ref<number | null>(null)
 
 let unlisteners: Array<() => void> = []
@@ -38,6 +46,9 @@ async function refresh(): Promise<void> {
     }
     mappings.value = map
     snapshotHour.value = await api.getSnapshotHour()
+    const sched = await api.getSchedulerConfig()
+    schedEnabled.value = sched.enabled
+    schedInterval.value = sched.interval_minutes
     state.value = 'ready'
   } catch (e) {
     state.value = 'error'
@@ -125,6 +136,17 @@ async function saveHour(): Promise<void> {
 }
 
 const snapRunning = ref(false)
+async function saveScheduler(): Promise<void> {
+  try {
+    await api.setSchedulerConfig(schedEnabled.value, schedInterval.value)
+    loginHint.value = schedEnabled.value
+      ? `自动拉取已开启，${schedInterval.value} 分钟一次（下一轮生效）`
+      : '自动拉取已关闭，仅手动拉取'
+  } catch (e) {
+    loginHint.value = `保存失败：${e}`
+  }
+}
+
 async function snapshotNow(): Promise<void> {
   snapRunning.value = true
   snapshotResults.value = []
@@ -281,6 +303,24 @@ onUnmounted(() => {
   </section>
 
   <section class="card">
+    <h2>定时拉取</h2>
+    <div class="snap-row">
+      <label>
+        <input v-model="schedEnabled" type="checkbox" />
+        自动拉取
+      </label>
+      <select v-model.number="schedInterval" class="hour" :disabled="!schedEnabled">
+        <option v-for="o in INTERVAL_OPTIONS" :key="o.value" :value="o.value">{{ o.label }}</option>
+      </select>
+      <button type="button" class="ghost" @click="saveScheduler">保存</button>
+    </div>
+    <p class="hint">
+      开启时应用运行期间按所选间隔自动拉取线索与报表（新门店首轮回填 90 天，之后每轮重拉近 7 天）；
+      关闭后仅手动拉取，每日对账快照也一并停用。修改后下一轮生效。
+    </p>
+  </section>
+
+  <section class="card">
     <h2>对账快照</h2>
     <div class="snap-row">
       <label>每日 <input v-model.number="snapshotHour" type="number" min="0" max="23" class="hour" /> 点执行</label>
@@ -349,5 +389,6 @@ th { color: #a8a29e; font-weight: 500; font-size: 12px; }
 .ocean-ops { margin-top: 16px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .snap-row { display: flex; gap: 12px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
 .snap-row label { font-size: 13px; color: #57534e; display: flex; align-items: center; gap: 6px; }
+.snap-row input[type='checkbox'] { width: 16px; height: 16px; }
 .hour { width: 60px; border: 1px solid #d6d3d1; border-radius: 8px; padding: 6px 8px; font-size: 13px; }
 </style>

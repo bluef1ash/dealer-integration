@@ -8,6 +8,7 @@ import type {
   OceanCredentials,
   PullOutcome,
   Range,
+  SchedulerConfig,
   SnapshotOutcome,
   Store,
   StoreStatus,
@@ -37,4 +38,7 @@ export const api = {
   runSnapshot: (storeId: number | null) => invoke<SnapshotOutcome[]>('run_snapshot', { storeId }),
   setSnapshotHour: (hour: number) => invoke<void>('set_snapshot_hour', { hour }),
   getSnapshotHour: () => invoke<number>('get_snapshot_hour'),
+  getSchedulerConfig: () => invoke<SchedulerConfig>('get_scheduler_config'),
+  setSchedulerConfig: (enabled: boolean, intervalMinutes: number) =>
+    invoke<void>('set_scheduler_config', { enabled, intervalMinutes }),
 }

@@ -118,6 +118,12 @@ export interface LoginEvent {
   message: string
 }
 
+/** 自动拉取配置（设置页维护） */
+export interface SchedulerConfig {
+  enabled: boolean
+  interval_minutes: number
+}
+
 /** 对账快照单店结果 */
 export interface SnapshotOutcome {
   store_id: number

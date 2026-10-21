@@ -58,6 +58,8 @@ pub fn run() {
             commands::run_snapshot,
             commands::set_snapshot_hour,
             commands::get_snapshot_hour,
+            commands::get_scheduler_config,
+            commands::set_scheduler_config,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

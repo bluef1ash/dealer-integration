@@ -1,5 +1,6 @@
-//! 调度器（issue #10/#11/#12）：应用启动即跑，每小时拉取；快照按配置时刻每日一次；
-//! 会话失效自动触发 WebView 重登（有密码自动回填，无密码提醒人工）；单店失败不中断整体调度。
+//! 调度器（issue #10/#11/#12）：应用启动即跑，按设置页配置的开关与间隔定时拉取；
+//! 快照按配置时刻每日一次；会话失效自动触发 WebView 重登（有密码自动回填，无密码提醒人工）；
+//! 单店失败不中断整体调度。开关/间隔改配置后下一轮生效（关闭态 30 秒内感知重启）。
 
 use std::time::Duration;
 
@@ -12,18 +13,55 @@ use crate::db::Db;
 use crate::models::Store;
 use crate::{collector, login, settings};
 
+/// 自动拉取配置（设置页维护；库中无值时用默认：开 / 60 分钟）
+#[derive(serde::Serialize)]
+pub struct SchedulerConfig {
+    pub enabled: bool,
+    pub interval_minutes: i64,
+}
+
+impl Default for SchedulerConfig {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            interval_minutes: 60,
+        }
+    }
+}
+
+pub fn read_config(db: &Db) -> SchedulerConfig {
+    db.with(|conn| {
+        let mut cfg = SchedulerConfig::default();
+        if let Some(v) = settings::get_setting(conn, settings::KEY_SCHEDULER_ENABLED)? {
+            cfg.enabled = v == "1";
+        }
+        if let Some(v) = settings::get_setting(conn, settings::KEY_SCHEDULER_INTERVAL)? {
+            if let Ok(n) = v.parse::<i64>() {
+                cfg.interval_minutes = n;
+            }
+        }
+        Ok(cfg)
+    })
+    .unwrap_or_default()
+}
+
 pub fn start(app: AppHandle) {
     tauri::async_runtime::spawn(async move {
-        // 首个 tick 立即触发：启动即保鲜
-        let mut ticker = tokio::time::interval(Duration::from_secs(3600));
         loop {
-            ticker.tick().await;
+            let cfg = read_config(&app.state::<Db>());
+            if !cfg.enabled {
+                // 关闭态短轮询：设置页重新打开后最多 30 秒内恢复调度
+                tokio::time::sleep(Duration::from_secs(30)).await;
+                continue;
+            }
+            // 启动后第一轮立即执行（含刚从关闭恢复时）
             if let Err(e) = run_hourly(&app).await {
-                eprintln!("[调度] 小时拉取失败（不影响后续调度）: {e}");
+                eprintln!("[调度] 定时拉取失败（不影响后续调度）: {e}");
             }
             if let Err(e) = maybe_daily_snapshot(&app).await {
                 eprintln!("[调度] 对账快照失败（不影响后续调度）: {e}");
             }
+            tokio::time::sleep(Duration::from_secs(cfg.interval_minutes.max(1) as u64 * 60)).await;
         }
     });
 }
