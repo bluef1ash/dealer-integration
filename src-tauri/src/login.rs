@@ -105,8 +105,9 @@ async fn capture_session(
         }
         if jar.contains(&format!("{CRM_COOKIE}=")) {
             eprintln!("[登录] 命中 {CRM_COOKIE}，保存会话（{} 字节）", jar.len());
-            if let Err(e) = credentials::save_store_cookie(account, &jar) {
-                eprintln!("[登录] 凭证库保存失败: {e}");
+            let db = app.state::<crate::db::Db>();
+            if let Err(e) = db.with(|conn| credentials::save_store_cookie(conn, account, &jar)) {
+                eprintln!("[登录] 会话保存失败: {e}");
                 let _ = app.emit(
                     "login://result",
                     LoginEvent {

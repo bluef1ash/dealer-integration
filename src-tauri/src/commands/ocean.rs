@@ -15,13 +15,13 @@ pub struct OceanAuthOutcome {
     pub accounts: Vec<AdAccount>,
 }
 
-/// 应用列表（设置页）；token 有无来自系统凭证库，读失败按未授权展示但必须留痕
+/// 应用列表（设置页）；token 有无查自 credentials 表，读失败按未授权展示但必须留痕
 #[tauri::command]
 pub fn list_ocean_apps(db: State<'_, Db>) -> Result<Vec<OceanAppStatus>, String> {
     db.with(|conn| -> AppResult<Vec<OceanAppStatus>> {
         let mut out = Vec::new();
         for app in repo::ocean_apps::list(conn)? {
-            let has_token = match credentials::load_ocean_tokens(&app.app_id) {
+            let has_token = match credentials::load_ocean_tokens(conn, &app.app_id) {
                 Ok((access, _)) => access.is_some(),
                 Err(e) => {
                     eprintln!("[状态] 巨量 token 读取失败 app_id={}: {e}", app.app_id);
@@ -75,7 +75,8 @@ pub fn remove_ocean_app(db: State<'_, Db>, ocean_id: i64) -> Result<(), String> 
     let app = db
         .with(|conn| repo::ocean_apps::get(conn, ocean_id))
         .map_err(err_string)?;
-    credentials::delete_ocean_tokens(&app.app_id).map_err(err_string)?;
+    db.with(|conn| credentials::delete_ocean_tokens(conn, &app.app_id))
+        .map_err(err_string)?;
     db.with(|conn| repo::ocean_apps::delete(conn, ocean_id))
         .map_err(err_string)
 }
@@ -109,11 +110,14 @@ pub async fn start_ocean_auth(
         )
         .await
         .map_err(err_string)?;
-    credentials::save_ocean_tokens(
-        ocean_app.app_id.trim(),
-        &tokens.access_token,
-        &tokens.refresh_token,
-    )
+    db.with(|conn| {
+        credentials::save_ocean_tokens(
+            conn,
+            ocean_app.app_id.trim(),
+            &tokens.access_token,
+            &tokens.refresh_token,
+        )
+    })
     .map_err(err_string)?;
     db.with(|conn| {
         repo::ocean_apps::set_token_expires(

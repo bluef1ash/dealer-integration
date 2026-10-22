@@ -161,7 +161,7 @@ const accountSummary = computed(() =>
         <button class="btn" :disabled="adding" @click="addApp">{{ adding ? '添加中…' : '添加应用' }}</button>
       </div>
       <p class="form-hint">
-        凭证存本地 SQLite（ocean_apps 表），token 存系统凭证库；OAuth 回调本机 127.0.0.1:1720。
+        凭证与 token 均存本地 SQLite（跨平台随库迁移）；OAuth 回调本机 127.0.0.1:1720。
         Secret 保存后不再回显，需要更换时删除应用重新添加——同一 App ID 重录不影响已授权 token。
       </p>
       <p v-if="hint" class="banner">{{ hint }}</p>

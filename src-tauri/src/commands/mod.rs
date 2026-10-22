@@ -64,7 +64,8 @@ pub fn add_store(
 #[tauri::command]
 pub fn remove_store(db: State<'_, Db>, store_id: i64) -> Result<(), String> {
     let store = get_store(&db, store_id).map_err(err_string)?;
-    credentials::delete_store(&store.account).map_err(err_string)?;
+    db.with(|conn| credentials::delete_store(conn, &store.account))
+        .map_err(err_string)?;
     db.with(|conn| repo::stores::delete(conn, store_id))
         .map_err(err_string)
 }
@@ -92,7 +93,7 @@ pub fn get_collection_status(db: State<'_, Db>) -> Result<Vec<StoreStatus>, Stri
             .into_iter()
             .map(|store| {
                 let state = states.get(&store.id);
-                let has_session = match credentials::load_store_cookie(&store.account) {
+                let has_session = match credentials::load_store_cookie(conn, &store.account) {
                     Ok(c) => c.is_some(),
                     // 凭证库读失败会直接显示「未登录」，必须留痕否则无从排查
                     Err(e) => {
@@ -270,7 +271,8 @@ async fn run_store_snapshot(
     today: &str,
     now: i64,
 ) -> AppResult<usize> {
-    let cookie = credentials::load_store_cookie(&store.account)?
+    let cookie = db
+        .with(|conn| credentials::load_store_cookie(conn, &store.account))?
         .ok_or_else(|| AppError::Message(format!("门店 {} 尚未登录", store.name)))?;
     let window = LeadsWindow::export(now - 90 * 86_400, now, false);
     let task_id = jd.create_export(&cookie, &window).await?;

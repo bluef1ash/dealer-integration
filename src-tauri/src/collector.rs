@@ -44,7 +44,8 @@ pub async fn pull_store_leads(
     store: &Store,
     window_days: i64,
 ) -> AppResult<usize> {
-    let cookie = credentials::load_store_cookie(&store.account)?
+    let cookie = db
+        .with(|conn| credentials::load_store_cookie(conn, &store.account))?
         .ok_or_else(|| AppError::Message(format!("门店 {} 尚未登录巨懂车", store.name)))?;
     let now = crate::db::now();
     let window = LeadsWindow::list(now - window_days * 86_400, now, 1, PAGE_SIZE, false);

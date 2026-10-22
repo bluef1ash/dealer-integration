@@ -78,6 +78,12 @@ CREATE TABLE IF NOT EXISTS settings (
     value TEXT NOT NULL
 );
 
+-- 凭证键值表（会话 cookie、巨量 token；键名见 credentials.rs）
+CREATE TABLE IF NOT EXISTS credentials (
+    name  TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS stores (
     id         INTEGER PRIMARY KEY AUTOINCREMENT,
     name       TEXT NOT NULL,

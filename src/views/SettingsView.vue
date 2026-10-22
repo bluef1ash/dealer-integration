@@ -423,7 +423,7 @@ const accountCount = computed(() => accounts.value.length)
         <h2>数据与凭证</h2>
         <ul class="note-list">
           <li><b>业务数据</b>：存本地 SQLite，位于系统应用数据目录。</li>
-          <li><b>登录凭证</b>：巨懂车会话、巨量 OAuth token 存系统凭证库；巨懂车密码存本地 SQLite（stores 表）。</li>
+          <li><b>凭证</b>：会话 cookie、巨懂车密码、巨量 token 与应用凭证全部存本地 SQLite（跨平台随库迁移），不依赖系统凭证库。</li>
           <li><b>巨量引擎应用</b>：多应用配置存本地 SQLite（ocean_apps 表），Secret 不回显。</li>
           <li><b>线索 ID</b>：以列表接口为主键，快照按飞鱼线索 ID 找回后合并。</li>
           <li><b>分发</b>：为手动安装包，无自动更新与多租户。</li>

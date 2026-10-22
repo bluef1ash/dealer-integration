@@ -116,8 +116,8 @@ async fn refresh_and_pull_ocean(app: &AppHandle) -> crate::error::AppResult<()> 
     let clients = app.state::<Clients>();
     let apps = db.with(crate::repo::ocean_apps::list)?;
     for ocean_app in apps {
-        let (Some(access), Some(refresh)) = credentials::load_ocean_tokens(&ocean_app.app_id)?
-        else {
+        let tokens = db.with(|conn| credentials::load_ocean_tokens(conn, &ocean_app.app_id))?;
+        let (Some(access), Some(refresh)) = tokens else {
             continue; // 未授权：跳过
         };
 
@@ -130,11 +130,14 @@ async fn refresh_and_pull_ocean(app: &AppHandle) -> crate::error::AppResult<()> 
                 .await
             {
                 Ok(tokens) => {
-                    credentials::save_ocean_tokens(
-                        &ocean_app.app_id,
-                        &tokens.access_token,
-                        &tokens.refresh_token,
-                    )?;
+                    db.with(|conn| {
+                        credentials::save_ocean_tokens(
+                            conn,
+                            &ocean_app.app_id,
+                            &tokens.access_token,
+                            &tokens.refresh_token,
+                        )
+                    })?;
                     db.with(|conn| {
                         crate::repo::ocean_apps::set_token_expires(
                             conn,
