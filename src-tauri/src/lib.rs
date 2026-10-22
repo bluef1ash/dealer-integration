@@ -14,6 +14,7 @@ pub mod repo;
 pub mod scheduler;
 pub mod settings;
 pub mod snapshot;
+pub mod tray;
 
 use std::fs;
 
@@ -36,7 +37,11 @@ pub fn run() {
                 ocean: ocean::Client::new(),
             });
             scheduler::start(app.handle().clone());
+            tray::setup(app.handle())?;
             Ok(())
+        })
+        .on_window_event(|window, event| {
+            tray::on_window_event(window.app_handle(), window.label(), event);
         })
         .invoke_handler(tauri::generate_handler![
             commands::list_stores,
