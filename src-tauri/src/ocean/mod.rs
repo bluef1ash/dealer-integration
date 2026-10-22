@@ -9,6 +9,14 @@ use crate::error::{AppError, AppResult};
 use crate::models::{AdReportRow, PlanReportRow};
 
 const TOKEN_URL: &str = "https://ad.oceanengine.com/open_api/oauth2/access_token/";
+// v3.0 报表唯一存活路由是「自定义报表」custom/get，域名 api.oceanengine.com
+// （2026-10-22 无凭证探测：ad./api. 两域的 v2 integrated 与 v3 预置路径全部 404，
+// 仅 custom/get 返回业务码 40105；请求口径对照官方文档 1741387668314126）
+const REPORT_URL: &str = "https://api.oceanengine.com/open_api/v3.0/report/custom/get/";
+/// 请求指标（官方 v3 口径；若平台报字段不合法，用「获取自定义报表可用指标和维度」接口核对）
+const REQUEST_METRICS: &[&str] = &["stat_cost", "show_cnt", "click_cnt", "convert_cnt"];
+/// 自定义报表单页行数（官方上限 100）
+pub const REPORT_PAGE_SIZE: usize = 100;
 // 授权页真机校正（2026-10-22，与开发者后台生成的官方授权链接逐字比对）：
 // 域名为 open.oceanengine.com/audit/oauth.html，参数名是 app_id（非 client_id），
 // 不携带 redirect_uri（回调绑定在后台登记的地址）；旧 external/oauth/authorize 已 404，
@@ -58,12 +66,13 @@ pub struct Client {
     http: reqwest::Client,
 }
 
-/// 报表拉取请求参数（原先六个结伴参数收拢于此）
+/// 自定义报表拉取参数（v3.0 单次仅支持一个广告账户，多账户由采集层循环）
 pub struct ReportQuery {
-    pub data_level: &'static str,
+    pub advertiser_id: String,
+    /// 维度组合：账户级 ["stat_time_day"]；计划级再加 promotion_id/promotion_name
+    pub dimensions: &'static [&'static str],
     pub from_date: String,
     pub to_date: String,
-    pub advertiser_ids: Vec<String>,
     pub page: i64,
 }
 
@@ -109,7 +118,7 @@ impl Client {
         parse::parse_token_response(&text)
     }
 
-    /// 拉取一页报表（v3.0 多合一预置报表：data_level 进路径，GET + 查询参数，真机校正 2026-10-22）
+    /// 拉取一页自定义报表（GET；复杂参数序列化为 JSON 串，start/end 用官方 datetime 口径）
     pub async fn fetch_report(&self, access_token: &str, query: &ReportQuery) -> AppResult<String> {
         #[derive(Deserialize)]
         struct Envelope {
@@ -120,21 +129,22 @@ impl Client {
             #[serde(default)]
             data: serde_json::Value,
         }
-        let url = format!(
-            "https://ad.oceanengine.com/open_api/v3.0/{data_level}/report/integrated/get/",
-            data_level = query.data_level
-        );
-        let filter = serde_json::json!({ "advertiser_ids": query.advertiser_ids }).to_string();
         let params = [
-            ("start_date", query.from_date.clone()),
-            ("end_date", query.to_date.clone()),
+            ("advertiser_id", query.advertiser_id.clone()),
+            ("data_topic", "BASIC_DATA".to_string()),
+            (
+                "dimensions",
+                serde_json::json!(query.dimensions).to_string(),
+            ),
+            ("metrics", serde_json::json!(REQUEST_METRICS).to_string()),
+            ("start_time", format!("{} 00:00:00", query.from_date)),
+            ("end_time", format!("{} 23:59:59", query.to_date)),
             ("page", query.page.to_string()),
-            ("page_size", "200".to_string()),
-            ("filter", filter),
+            ("page_size", REPORT_PAGE_SIZE.to_string()),
         ];
         let text = self
             .http
-            .get(url)
+            .get(REPORT_URL)
             .header("Access-Token", access_token)
             .query(&params)
             .send()

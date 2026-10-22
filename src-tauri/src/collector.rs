@@ -109,7 +109,8 @@ pub async fn pull_store(
     }
 }
 
-/// 巨量引擎报表拉取：单应用视角，账户 + 计划层级，按日近 N 天，入库并返回行数。
+/// 巨量引擎报表拉取：单应用视角，逐账户取「账户×天」与「计划×天」两层，按日近 N 天。
+/// v3.0 自定义报表单次仅支持一个账户；单账户/单层失败只记日志不中断（下轮调度仍可补）。
 /// 多应用时由调用方逐应用传入各自的 access_token 与应用行 ID。
 pub async fn pull_ocean_reports(
     db: &Db,
@@ -128,33 +129,69 @@ pub async fn pull_ocean_reports(
         return Ok(0);
     }
     let mut total = 0usize;
-    // v3.0 预置报表「广告主×广告×天」的维度同时含账户与计划，一次拉取即出两类行；
-    // 层级失败只记日志不中断（其他层级/下轮调度仍可补数据）
-    for level in ["ADVERTISER_AD_DAY"] {
-        let mut page = 1i64;
-        loop {
-            let query = crate::ocean::ReportQuery {
-                data_level: level,
-                from_date: from_date.clone(),
-                to_date: to_date.clone(),
-                advertiser_ids: advertiser_ids.clone(),
-                page,
-            };
-            let data = match client.fetch_report(access_token, &query).await {
-                Ok(data) => data,
-                Err(e) => {
-                    eprintln!("[调度] 报表层级 {level} 拉取失败: {e}");
-                    break;
-                }
-            };
-            let (ads, plans) = crate::ocean::parse::parse_report_response(&data)?;
-            let batch = ads.len() + plans.len();
-            total += db.with(|conn| crate::ocean::ingest_reports(conn, &ads, &plans))?;
-            if batch == 0 || page > 50 {
-                break;
-            }
-            page += 1;
-        }
+    for account in &advertiser_ids {
+        // 仅维度组合不同：账户级出点击数完整的账户日行，计划级出计划日行
+        let base = |dimensions| crate::ocean::ReportQuery {
+            advertiser_id: account.clone(),
+            dimensions,
+            from_date: from_date.clone(),
+            to_date: to_date.clone(),
+            page: 1,
+        };
+        total += pull_level(db, client, access_token, base(ACCOUNT_DIMS), false).await?;
+        total += pull_level(db, client, access_token, base(PLAN_DIMS), true).await?;
     }
     Ok(total)
+}
+
+/// 自定义报表维度组合：账户级仅统计日期；计划级加计划 ID 与名称
+const ACCOUNT_DIMS: &[&str] = &["stat_time_day"];
+const PLAN_DIMS: &[&str] = &["stat_time_day", "promotion_id", "promotion_name"];
+
+/// 拉取单账户单层报表并入库（翻页直到取尽）；失败只记日志并返回已入库行数。
+/// plan_level=false 只入账户行、true 只入计划行（计划行不含点击数，账户行点击以账户级调用为准）
+async fn pull_level(
+    db: &Db,
+    client: &crate::ocean::Client,
+    access_token: &str,
+    mut query: crate::ocean::ReportQuery,
+    plan_level: bool,
+) -> AppResult<usize> {
+    let account = query.advertiser_id.clone();
+    let label = if plan_level { "计划级" } else { "账户级" };
+    let mut total = 0usize;
+    let mut page = 1i64;
+    loop {
+        query.page = page;
+        let data = match client.fetch_report(access_token, &query).await {
+            Ok(data) => data,
+            Err(e) => {
+                eprintln!("[调度] 账户 {account} {label}报表拉取失败: {e}");
+                return Ok(total);
+            }
+        };
+        let (mut ads, mut plans) = crate::ocean::parse::parse_report_response(&data)?;
+        let got = if plan_level { plans.len() } else { ads.len() };
+        // 自定义报表可不带 advertiser 维度：账户 ID 由本地按所查账户注入
+        for row in &mut ads {
+            if row.ad_account_id.is_empty() {
+                row.ad_account_id = account.to_string();
+            }
+        }
+        for row in &mut plans {
+            if row.ad_account_id.is_empty() {
+                row.ad_account_id = account.to_string();
+            }
+        }
+        let (ads, plans) = if plan_level {
+            (Vec::new(), plans)
+        } else {
+            (ads, Vec::new())
+        };
+        total += db.with(|conn| crate::ocean::ingest_reports(conn, &ads, &plans))?;
+        if got < crate::ocean::REPORT_PAGE_SIZE || page > 50 {
+            return Ok(total);
+        }
+        page += 1;
+    }
 }
