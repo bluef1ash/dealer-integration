@@ -99,21 +99,17 @@ pub fn delete_store(account: &str) -> crate::error::AppResult<()> {
         }
         delete(&cookie_chunk_name(account, i))?;
     }
-    delete(&store_password_name(account))?;
     Ok(())
 }
 
-/// 门店巨懂车密码（可选录入，供会话失效自动重登；短信路径不需要）
-pub fn store_password_name(account: &str) -> String {
-    format!("store:{account}:password")
+/// 旧版密码条目：密码已改存 SQLite（repo::stores），仅剩启动迁移的读取与清理两个用途
+pub fn load_legacy_password(account: &str) -> crate::error::AppResult<Option<String>> {
+    get(&format!("store:{account}:password"))
 }
 
-pub fn save_store_password(account: &str, password: &str) -> crate::error::AppResult<()> {
-    set(&store_password_name(account), password)
-}
-
-pub fn load_store_password(account: &str) -> crate::error::AppResult<Option<String>> {
-    get(&store_password_name(account))
+/// 旧版密码条目清理：密码已改存 SQLite（repo::stores），启动迁移时删除凭证库残留
+pub fn delete_legacy_password(account: &str) -> crate::error::AppResult<()> {
+    delete(&format!("store:{account}:password"))
 }
 
 /// 巨量引擎 OAuth token（按应用分条；一个应用的授权覆盖其名下全部广告账户）

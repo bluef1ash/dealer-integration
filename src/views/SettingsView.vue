@@ -282,7 +282,7 @@ const accountCount = computed(() => accounts.value.length)
           <button class="btn" :disabled="adding" @click="addStore">{{ adding ? '添加中…' : '添加门店' }}</button>
         </div>
         <p class="form-hint">
-          密码仅存系统凭证库（Windows 凭据管理器 / macOS 钥匙串），不写入业务数据库；
+          密码存本地 SQLite（随应用数据目录的数据库文件走），仅用于会话失效时自动重登；
           登录在应用内嵌窗口完成，支持账号密码或短信验证码，滑块需人工拖动。
         </p>
       </section>
@@ -423,7 +423,7 @@ const accountCount = computed(() => accounts.value.length)
         <h2>数据与凭证</h2>
         <ul class="note-list">
           <li><b>业务数据</b>：存本地 SQLite，位于系统应用数据目录。</li>
-          <li><b>登录凭证</b>：巨懂车密码 / 会话、巨量 OAuth token 存系统凭证库。</li>
+          <li><b>登录凭证</b>：巨懂车会话、巨量 OAuth token 存系统凭证库；巨懂车密码存本地 SQLite（stores 表）。</li>
           <li><b>巨量引擎应用</b>：多应用配置存本地 SQLite（ocean_apps 表），Secret 不回显。</li>
           <li><b>线索 ID</b>：以列表接口为主键，快照按飞鱼线索 ID 找回后合并。</li>
           <li><b>分发</b>：为手动安装包，无自动更新与多租户。</li>

@@ -53,8 +53,10 @@ pub fn add_store(
     let store = db
         .with(|conn| repo::stores::insert(conn, name, account))
         .map_err(err_string)?;
-    if let Some(password) = password.as_deref().filter(|p| !p.trim().is_empty()) {
-        credentials::save_store_password(account, password.trim()).map_err(err_string)?;
+    // 密码随库走（用户决策）：存 stores.password，供会话失效自动重登
+    if let Some(password) = password.as_deref().map(str::trim).filter(|p| !p.is_empty()) {
+        db.with(|conn| repo::stores::set_password(conn, store.id, password))
+            .map_err(err_string)?;
     }
     Ok(store)
 }
@@ -117,7 +119,9 @@ pub fn get_collection_status(db: State<'_, Db>) -> Result<Vec<StoreStatus>, Stri
 #[tauri::command]
 pub async fn start_login(app: AppHandle, db: State<'_, Db>, store_id: i64) -> Result<(), String> {
     let store = get_store(&db, store_id).map_err(err_string)?;
-    let password = credentials::load_store_password(&store.account).map_err(err_string)?;
+    let password = db
+        .with(|conn| repo::stores::password_of(conn, store_id))
+        .map_err(err_string)?;
     login::open_login(&app, store_id, &store.account, password).map_err(err_string)
 }
 

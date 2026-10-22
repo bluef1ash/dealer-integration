@@ -88,7 +88,7 @@ async fn run_hourly(app: &AppHandle) -> crate::error::AppResult<()> {
         }
         // 会话失效 → 自动重登（issue #11）：有密码自动回填，无密码提醒人工介入
         if outcome.session_expired {
-            match credentials::load_store_password(&store.account) {
+            match db.with(|conn| crate::repo::stores::password_of(conn, store.id)) {
                 Ok(password) => {
                     let has_password = password.is_some();
                     if let Err(e) = login::open_login(app, store.id, &store.account, password) {

@@ -37,6 +37,8 @@ impl Db {
         add_column(
             "ALTER TABLE ad_accounts ADD COLUMN ocean_app_id INTEGER REFERENCES ocean_apps(id)",
         );
+        // 巨懂车密码改存 SQLite（用户决策：随库走便于备份；旧值启动时从凭证库迁入）
+        add_column("ALTER TABLE stores ADD COLUMN password TEXT NOT NULL DEFAULT ''");
         let _ = conn
             .execute_batch("CREATE INDEX IF NOT EXISTS idx_leads_feiyu ON leads(feiyu_leads_id)");
     }
@@ -80,6 +82,7 @@ CREATE TABLE IF NOT EXISTS stores (
     id         INTEGER PRIMARY KEY AUTOINCREMENT,
     name       TEXT NOT NULL,
     account    TEXT NOT NULL UNIQUE,
+    password   TEXT NOT NULL DEFAULT '',
     created_at INTEGER NOT NULL
 );
 

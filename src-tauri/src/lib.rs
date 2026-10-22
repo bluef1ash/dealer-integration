@@ -42,6 +42,12 @@ pub fn run() {
                 Ok(None) => {}
                 Err(e) => eprintln!("[迁移] 巨量旧凭证迁移失败（下次启动重试）: {e}"),
             }
+            // 巨懂车密码从系统凭证库迁入 SQLite（用户决策：密码随库走）；失败留痕下次重试
+            match database.with(repo::stores::migrate_keyring_passwords) {
+                Ok(0) => {}
+                Ok(n) => eprintln!("[迁移] 已从凭证库迁入 {n} 条巨懂车密码"),
+                Err(e) => eprintln!("[迁移] 巨懂车密码迁移失败（下次启动重试）: {e}"),
+            }
             app.manage(database);
             app.manage(Clients {
                 jd: judongche::client::Client::new(),

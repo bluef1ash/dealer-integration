@@ -1,6 +1,6 @@
 # 数据库
 
-客户端为纯单机应用，数据存本地 SQLite（rusqlite bundled），库文件位于系统应用数据目录（Windows: `%APPDATA%/com.bluef1ash.dealerintegration/dealer-integration.db`），由 `src-tauri/src/db.rs` 在应用启动时打开、执行建表与渐进迁移（`ALTER TABLE` 补列，幂等）。凭证（会话 cookie、账号密码、巨量 token）**不入库**，存系统凭证库（`src-tauri/src/credentials.rs`，Windows 凭据管理器 / macOS 钥匙串）；例外是巨量 App ID / Secret，按用户决策（issue #13）经设置页存 `ocean_apps` 表（多应用，启动时自动迁移旧版 settings 单应用键）。
+客户端为纯单机应用，数据存本地 SQLite（rusqlite bundled），库文件位于系统应用数据目录（Windows: `%APPDATA%/com.bluef1ash.dealerintegration/dealer-integration.db`），由 `src-tauri/src/db.rs` 在应用启动时打开、执行建表与渐进迁移（`ALTER TABLE` 补列，幂等）。会话 cookie 与巨量 OAuth token **不入库**，存系统凭证库（`src-tauri/src/credentials.rs`，Windows 凭据管理器 / macOS 钥匙串）；两处例外（均为用户决策）：巨量 App ID / Secret 存 `ocean_apps` 表（issue #13，多应用，启动时自动迁移旧版 settings 单应用键），巨懂车账号密码存 `stores.password` 列（2026-10-22，明文随库走便于备份，启动时自动从旧版凭证库迁入并清除旧条目）。
 
 ## 表结构
 
@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS stores (
     id         INTEGER PRIMARY KEY AUTOINCREMENT,
     name       TEXT NOT NULL,
     account    TEXT NOT NULL UNIQUE,   -- 巨懂车账号（手机号）
+    password   TEXT NOT NULL DEFAULT '', -- 巨懂车密码（明文，供自动重登；启动迁移从旧版凭证库迁入）
     created_at INTEGER NOT NULL
 );
 ```

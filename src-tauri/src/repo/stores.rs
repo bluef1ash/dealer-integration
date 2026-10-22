@@ -125,6 +125,43 @@ pub fn mark_backfilled(conn: &Connection, store_id: i64) -> AppResult<()> {
     Ok(())
 }
 
+/// 巨懂车密码（明文存库，用户决策：随数据库走便于备份，不用系统凭证库）
+pub fn set_password(conn: &Connection, store_id: i64, password: &str) -> AppResult<()> {
+    conn.execute(
+        "UPDATE stores SET password = ?1 WHERE id = ?2",
+        rusqlite::params![password, store_id],
+    )?;
+    Ok(())
+}
+
+/// 库内密码；空串视为未存
+pub fn password_of(conn: &Connection, store_id: i64) -> AppResult<Option<String>> {
+    let pw: String = conn
+        .query_row(
+            "SELECT password FROM stores WHERE id = ?1",
+            [store_id],
+            |r| r.get(0),
+        )
+        .map_err(|e| crate::error::AppError::Message(format!("门店不存在: {e}")))?;
+    Ok(if pw.is_empty() { None } else { Some(pw) })
+}
+
+/// 旧版密码存系统凭证库，启动时迁入库内并清除旧条目（幂等；库内已有值时只清理凭证库）
+pub fn migrate_keyring_passwords(conn: &Connection) -> AppResult<usize> {
+    let mut moved = 0;
+    for store in list(conn)? {
+        let Some(pw) = crate::credentials::load_legacy_password(&store.account)? else {
+            continue;
+        };
+        if password_of(conn, store.id)?.is_none() {
+            set_password(conn, store.id, &pw)?;
+            moved += 1;
+        }
+        crate::credentials::delete_legacy_password(&store.account)?;
+    }
+    Ok(moved)
+}
+
 /// 门店 ↔ 广告账户映射（多对多）
 pub fn set_mapping(
     conn: &Connection,
@@ -189,6 +226,23 @@ mod tests {
             let st = pull_state(conn, s.id)?;
             assert_eq!(st.last_success_at, Some(300));
             assert_eq!(st.last_error, "");
+            Ok(())
+        })
+        .unwrap();
+    }
+
+    #[test]
+    fn password_roundtrip_and_empty_is_none() {
+        let db = Db::open_in_memory();
+        db.with(|conn| {
+            let s = insert(conn, "城东店", "13800000001")?;
+            assert_eq!(password_of(conn, s.id)?, None);
+            set_password(conn, s.id, "p1")?;
+            assert_eq!(password_of(conn, s.id)?.as_deref(), Some("p1"));
+            set_password(conn, s.id, "p2")?;
+            assert_eq!(password_of(conn, s.id)?.as_deref(), Some("p2"));
+            set_password(conn, s.id, "")?;
+            assert_eq!(password_of(conn, s.id)?, None);
             Ok(())
         })
         .unwrap();
