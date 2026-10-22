@@ -33,12 +33,6 @@ const adding = ref(false)
 
 const schedEnabled = ref(true)
 const schedInterval = ref(60)
-const INTERVAL_OPTIONS = [
-  { value: 30, label: '每 30 分钟' },
-  { value: 60, label: '每 1 小时' },
-  { value: 120, label: '每 2 小时' },
-  { value: 180, label: '每 3 小时' },
-]
 const snapshotHour = ref(23)
 
 const unlisteners: Array<() => void> = []
@@ -123,6 +117,15 @@ async function toggleMapping(s: StoreStatus, accountId: string, checked: boolean
 }
 
 async function saveScheduler(): Promise<void> {
+  // v-model.number 清空输入时得到空串，先做前端校验避免把非数字发给后端
+  if (
+    !Number.isInteger(schedInterval.value) ||
+    schedInterval.value < 15 ||
+    schedInterval.value > 1440
+  ) {
+    loginHint.value = '拉取间隔须为 15-1440 之间的整数分钟'
+    return
+  }
   try {
     await api.setSchedulerConfig(schedEnabled.value, schedInterval.value)
     loginHint.value = schedEnabled.value
@@ -352,13 +355,20 @@ const accountCount = computed(() => accounts.value.length)
         </label>
         <div class="field-row">
           <label class="field">
-            <span>拉取间隔</span>
-            <select v-model.number="schedInterval" class="control" :disabled="!schedEnabled">
-              <option v-for="o in INTERVAL_OPTIONS" :key="o.value" :value="o.value">{{ o.label }}</option>
-            </select>
+            <span>拉取间隔（分钟）</span>
+            <input
+              v-model.number="schedInterval"
+              class="input"
+              type="number"
+              min="15"
+              max="1440"
+              step="1"
+              placeholder="60"
+              :disabled="!schedEnabled"
+            />
           </label>
         </div>
-        <p class="form-hint">新门店首轮回填 90 天，之后每轮重拉最近 7 天，覆盖线索状态变更。修改后下一轮生效。</p>
+        <p class="form-hint">间隔按分钟计算，可填 15-1440 的整数（如 30 = 每半小时、1440 = 每天）。新门店首轮回填 90 天，之后每轮重拉最近 7 天，覆盖线索状态变更。修改后下一轮生效。</p>
         <div class="form-actions">
           <button class="btn btn-sm" @click="saveScheduler">保存设置</button>
         </div>
