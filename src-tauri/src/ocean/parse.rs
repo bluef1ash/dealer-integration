@@ -159,7 +159,8 @@ pub fn parse_token_response(body: &str) -> AppResult<TokenData> {
     Ok(resp.data)
 }
 
-/// OAuth 换 token 请求体（授权码模式）
+/// OAuth 换 token 请求体（巨量的 grant_type 固定为 "auth_code"，
+/// 不是标准 OAuth 的 "authorization_code"——官方文档与 SDK 均如此）
 pub fn token_request_body(
     app_id: i64,
     secret: &str,
@@ -169,7 +170,7 @@ pub fn token_request_body(
     serde_json::json!({
         "app_id": app_id,
         "secret": secret,
-        "grant_type": "authorization_code",
+        "grant_type": "auth_code",
         "auth_code": auth_code,
         "redirect_uri": redirect_uri,
     })
@@ -227,13 +228,8 @@ mod tests {
 
     #[test]
     fn token_request_shape_is_documented_contract() {
-        let body = token_request_body(
-            1700000000,
-            "sec",
-            "auth-code",
-            "http://127.0.0.1:1720/callback",
-        );
-        assert_eq!(body["grant_type"], "authorization_code");
+        let body = token_request_body(1700000000, "sec", "auth-code", "http://127.0.0.1:1720");
+        assert_eq!(body["grant_type"], "auth_code");
         assert_eq!(body["auth_code"], "auth-code");
         assert_eq!(body["app_id"], 1700000000i64);
         let refresh = refresh_request_body(1700000000, "sec", "r-token");

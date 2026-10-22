@@ -10,12 +10,14 @@ use crate::models::{AdReportRow, PlanReportRow};
 
 const TOKEN_URL: &str = "https://ad.oceanengine.com/open_api/oauth2/access_token/";
 const REPORT_URL: &str = "https://ad.oceanengine.com/open_api/2/report/integrated/get/";
-const AUTHORIZE_URL: &str = "https://www.oceanengine.com/external/oauth/authorize";
+// 授权页路径经真机校正（2026-10-22）：原 www.oceanengine.com/external/oauth/authorize 已下线（404）
+const AUTHORIZE_URL: &str = "https://ad.oceanengine.com/openapi/audit/oauth.html";
 
-/// 桌面端 OAuth 回调：本机回环固定端口
+/// 桌面端 OAuth 回调：本机回环固定端口。
+/// redirect_uri 必须与开发者后台登记的回调地址完全一致（默认登记为不带路径的根地址）
 pub const REDIRECT_PORT: u16 = 1720;
 pub fn redirect_uri() -> String {
-    format!("http://127.0.0.1:{REDIRECT_PORT}/callback")
+    format!("http://127.0.0.1:{REDIRECT_PORT}")
 }
 
 /// 拼授权链接（与开放平台「APPID 管理」页生成的默认授权 URL 同构）
@@ -220,8 +222,10 @@ mod tests {
     fn authorize_url_encodes_redirect() {
         let url = authorize_url("1700000000");
         assert!(url.starts_with(
-            "https://www.oceanengine.com/external/oauth/authorize?client_id=1700000000"
+            "https://ad.oceanengine.com/openapi/audit/oauth.html?client_id=1700000000"
         ));
-        assert!(url.contains("redirect_uri=http%3A%2F%2F127.0.0.1%3A1720%2Fcallback"));
+        // 与开发者后台登记的回调地址一致（不带 /callback 路径）
+        assert!(url.contains("redirect_uri=http%3A%2F%2F127.0.0.1%3A1720"));
+        assert!(url.contains("state=dealer-integration"));
     }
 }
