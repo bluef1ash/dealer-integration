@@ -1,19 +1,26 @@
 //! Tauri command 边界：薄转发到各模块，错误转字符串给前端。
+//! 巨量引擎多应用相关 command 在子模块 ocean，经 pub use 保持原调用路径。
+
+pub mod ocean;
 
 use serde::Serialize;
-use tauri::{AppHandle, Emitter, Manager, State};
+use tauri::{AppHandle, Manager, State};
 
 use crate::credentials;
 use crate::db::Db;
 use crate::error::{AppError, AppResult};
 use crate::judongche::client::{Client as JdClient, LeadsWindow};
-use crate::models::{AdAccount, Dashboard, LeadPage, LeadsFilter, Range, Store};
-use crate::{collector, login, ocean, query, repo, settings, snapshot};
+use crate::models::{Dashboard, LeadPage, LeadsFilter, Range, Store};
+use crate::{collector, login, query, repo, settings, snapshot};
+
+pub use ocean::{
+    add_ocean_app, list_ad_accounts, list_ocean_apps, remove_ocean_app, start_ocean_auth,
+};
 
 /// 共享 HTTP 客户端
 pub struct Clients {
     pub jd: JdClient,
-    pub ocean: ocean::Client,
+    pub ocean: crate::ocean::Client,
 }
 
 fn err_string(e: AppError) -> String {
@@ -192,129 +199,6 @@ pub fn export_leads(
     Ok(path.to_string_lossy().to_string())
 }
 
-// ---------- 巨量引擎（issue #8） ----------
-
-#[tauri::command]
-pub fn get_ocean_credentials(db: State<'_, Db>) -> Result<settings::OceanCredentials, String> {
-    db.with_sql(settings::get_ocean_credentials)
-        .map_err(err_string)
-}
-
-#[tauri::command]
-pub fn save_ocean_credentials(
-    db: State<'_, Db>,
-    app_id: String,
-    app_secret: String,
-) -> Result<(), String> {
-    let app_id = app_id.trim();
-    let app_secret = app_secret.trim();
-    if app_id.is_empty() || app_secret.is_empty() {
-        return Err("App ID 与 App Secret 不能为空".into());
-    }
-    db.with_sql(|conn| settings::save_ocean_credentials(conn, app_id, app_secret))
-        .map_err(err_string)
-}
-
-#[derive(Serialize)]
-pub struct OceanAuthOutcome {
-    pub accounts: Vec<AdAccount>,
-}
-
-/// 发起 OAuth：打开系统浏览器 + 本机回环等回调（issue #8）
-#[tauri::command]
-pub async fn start_ocean_auth(
-    app: AppHandle,
-    db: State<'_, Db>,
-    clients: State<'_, Clients>,
-) -> Result<OceanAuthOutcome, String> {
-    let (app_id_str, secret) = db
-        .with(|conn| {
-            let creds = settings::get_ocean_credentials(conn)?;
-            Ok::<_, AppError>((
-                creds
-                    .app_id
-                    .ok_or_else(|| AppError::Message("尚未配置 App ID".into()))?,
-                creds
-                    .app_secret
-                    .ok_or_else(|| AppError::Message("尚未配置 App Secret".into()))?,
-            ))
-        })
-        .map_err(err_string)?;
-    let app_id: i64 = app_id_str
-        .trim()
-        .parse()
-        .map_err(|_| "App ID 必须是数字".to_string())?;
-
-    open_browser(&ocean::authorize_url(app_id_str.trim()));
-    let auth_code = wait_auth_code().await.map_err(err_string)?;
-    let tokens = clients
-        .ocean
-        .exchange_token(app_id, &secret, &auth_code, &ocean::redirect_uri())
-        .await
-        .map_err(err_string)?;
-    credentials::save_ocean_tokens(&tokens.access_token, &tokens.refresh_token)
-        .map_err(err_string)?;
-    let expires_at = crate::db::now() + tokens.expires_in;
-    db.with_sql(|conn| {
-        settings::save_setting(
-            conn,
-            settings::KEY_OCEAN_TOKEN_EXPIRES,
-            &expires_at.to_string(),
-        )
-    })
-    .map_err(err_string)?;
-
-    let accounts: Vec<AdAccount> = tokens
-        .advertiser_ids
-        .iter()
-        .map(|v| AdAccount {
-            id: json_value_to_string(v),
-            alias: String::new(),
-        })
-        .collect();
-    db.with(|conn| {
-        for account in &accounts {
-            repo::leads::ensure_ad_account(conn, &account.id, &account.alias)?;
-        }
-        Ok(())
-    })
-    .map_err(err_string)?;
-    let _ = app.emit("ocean://authorized", &accounts);
-    Ok(OceanAuthOutcome { accounts })
-}
-
-#[tauri::command]
-pub fn list_ad_accounts(db: State<'_, Db>) -> Result<Vec<AdAccount>, String> {
-    db.with(|conn| {
-        Ok(repo::leads::ad_account_ids(conn)?
-            .into_iter()
-            .map(|id| AdAccount {
-                id,
-                alias: String::new(),
-            })
-            .collect())
-    })
-    .map_err(err_string)
-}
-
-/// 门店 ↔ 广告账户映射（多对多）
-#[tauri::command]
-pub fn set_store_mapping(
-    db: State<'_, Db>,
-    store_id: i64,
-    ad_account_id: String,
-    enable: bool,
-) -> Result<(), String> {
-    db.with(|conn| repo::stores::set_mapping(conn, store_id, &ad_account_id, enable))
-        .map_err(err_string)
-}
-
-#[tauri::command]
-pub fn get_store_ad_accounts(db: State<'_, Db>, store_id: i64) -> Result<Vec<String>, String> {
-    db.with(|conn| repo::stores::mapping_account_ids(conn, store_id))
-        .map_err(err_string)
-}
-
 // ---------- 对账快照（issue #12） ----------
 
 #[derive(Serialize)]
@@ -459,79 +343,21 @@ pub fn get_snapshot_hour(db: State<'_, Db>) -> Result<i32, String> {
     .map_err(err_string)
 }
 
-// ---------- 辅助 ----------
+// ---------- 门店 ↔ 广告账户映射（多对多） ----------
 
-fn json_value_to_string(v: &serde_json::Value) -> String {
-    match v {
-        serde_json::Value::String(s) => s.clone(),
-        other => other.to_string(),
-    }
+#[tauri::command]
+pub fn set_store_mapping(
+    db: State<'_, Db>,
+    store_id: i64,
+    ad_account_id: String,
+    enable: bool,
+) -> Result<(), String> {
+    db.with(|conn| repo::stores::set_mapping(conn, store_id, &ad_account_id, enable))
+        .map_err(err_string)
 }
 
-fn open_browser(url: &str) {
-    #[cfg(target_os = "windows")]
-    {
-        let _ = std::process::Command::new("cmd")
-            .args(["/C", "start", "", url])
-            .spawn();
-    }
-    #[cfg(target_os = "macos")]
-    {
-        let _ = std::process::Command::new("open").arg(url).spawn();
-    }
-    #[cfg(all(unix, not(target_os = "macos")))]
-    {
-        let _ = std::process::Command::new("xdg-open").arg(url).spawn();
-    }
-}
-
-/// 本机回环等 OAuth 回调，取回授权码（5 分钟超时）
-async fn wait_auth_code() -> AppResult<String> {
-    use tokio::io::{AsyncReadExt, AsyncWriteExt};
-    let listener = tokio::net::TcpListener::bind(("127.0.0.1", ocean::REDIRECT_PORT))
-        .await
-        .map_err(|e| AppError::Message(format!("回调端口占用: {e}")))?;
-    let (mut stream, _) =
-        tokio::time::timeout(std::time::Duration::from_secs(300), listener.accept())
-            .await
-            .map_err(|_| AppError::Message("等待授权回调超时".into()))??;
-    let mut buf = vec![0u8; 8192];
-    let n = tokio::time::timeout(std::time::Duration::from_secs(5), stream.read(&mut buf))
-        .await
-        .map_err(|_| AppError::Message("读取回调请求超时".into()))??;
-    let request = String::from_utf8_lossy(&buf[..n]);
-    let line = request.lines().next().unwrap_or_default();
-    let query = line.split_whitespace().nth(1).unwrap_or_default();
-    let code = query
-        .split("auth_code=")
-        .nth(1)
-        .unwrap_or_default()
-        .split('&')
-        .next()
-        .unwrap_or_default();
-    if code.is_empty() {
-        return Err(AppError::Message("回调未携带授权码".into()));
-    }
-    let response =
-        "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\n\r\n授权成功，可关闭此页面。";
-    let _ = stream.write_all(response.as_bytes()).await;
-    Ok(percent_decode(code))
-}
-
-fn percent_decode(s: &str) -> String {
-    let bytes = s.as_bytes();
-    let mut out = Vec::new();
-    let mut i = 0;
-    while i < bytes.len() {
-        if bytes[i] == b'%' && i + 2 < bytes.len() {
-            if let Ok(v) = u8::from_str_radix(&s[i + 1..i + 3], 16) {
-                out.push(v);
-                i += 3;
-                continue;
-            }
-        }
-        out.push(bytes[i]);
-        i += 1;
-    }
-    String::from_utf8_lossy(&out).to_string()
+#[tauri::command]
+pub fn get_store_ad_accounts(db: State<'_, Db>, store_id: i64) -> Result<Vec<String>, String> {
+    db.with(|conn| repo::stores::mapping_account_ids(conn, store_id))
+        .map_err(err_string)
 }

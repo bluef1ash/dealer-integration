@@ -111,12 +111,21 @@ export interface Dashboard {
 export interface AdAccount {
   id: string
   alias: string
+  /** 归属应用行 ID；null 表示来源应用已删除（报表保留，仅不再刷新） */
+  ocean_app_id: number | null
+  app_name: string | null
 }
 
-/** 巨量引擎开放平台应用凭证（设置页保存至本地 SQLite settings 表） */
-export interface OceanCredentials {
-  appId: string | null
-  appSecret: string | null
+/** 巨量引擎应用状态（设置页列表行；Secret 不回传前端） */
+export interface OceanAppStatus {
+  id: number
+  name: string
+  /** 商业开放平台 App ID（数字串） */
+  app_id: string
+  /** OAuth token 过期时间 unix 秒；null 表示从未授权 */
+  token_expires_at: number | null
+  /** 凭证库中是否有该应用的 token */
+  has_token: boolean
 }
 
 /** WebView 登录结果事件（login://result） */

@@ -186,9 +186,35 @@ pub struct PlanReportRow {
     pub impressions: i64,
 }
 
+/// 巨量引擎开放平台应用（多应用管理，类比门店的巨懂车账号）
+#[derive(Debug, Clone, Serialize)]
+pub struct OceanApp {
+    pub id: i64,
+    pub name: String,
+    /// 商业开放平台 App ID（数字串，OAuth client_id）
+    pub app_id: String,
+    pub app_secret: String,
+    /// OAuth token 过期时间 unix 秒；None 表示从未授权
+    pub token_expires_at: Option<i64>,
+}
+
+/// 应用状态（设置页列表行；Secret 不出后端）
+#[derive(Debug, Serialize)]
+pub struct OceanAppStatus {
+    pub id: i64,
+    pub name: String,
+    pub app_id: String,
+    pub token_expires_at: Option<i64>,
+    /// 凭证库中是否有该应用的 OAuth token
+    pub has_token: bool,
+}
+
 /// 巨量广告账户（OAuth 授权返回的 advertiser）
 #[derive(Debug, Clone, Serialize)]
 pub struct AdAccount {
     pub id: String,
     pub alias: String,
+    /// 归属应用行 ID；None 表示来源应用已删除（报表保留，仅不再刷新）
+    pub ocean_app_id: Option<i64>,
+    pub app_name: Option<String>,
 }

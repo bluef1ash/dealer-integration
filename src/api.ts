@@ -5,7 +5,7 @@ import type {
   Dashboard,
   LeadPage,
   LeadsFilter,
-  OceanCredentials,
+  OceanAppStatus,
   PullOutcome,
   Range,
   SchedulerConfig,
@@ -27,10 +27,12 @@ export const api = {
   getDashboard: (range: Range, storeId: number | null) =>
     invoke<Dashboard>('get_dashboard', { range, storeId }),
   exportLeads: (filter: LeadsFilter) => invoke<string>('export_leads', { filter }),
-  getOceanCredentials: () => invoke<OceanCredentials>('get_ocean_credentials'),
-  saveOceanCredentials: (appId: string, appSecret: string) =>
-    invoke<void>('save_ocean_credentials', { appId, appSecret }),
-  startOceanAuth: () => invoke<{ accounts: AdAccount[] }>('start_ocean_auth'),
+  listOceanApps: () => invoke<OceanAppStatus[]>('list_ocean_apps'),
+  addOceanApp: (name: string, appId: string, appSecret: string) =>
+    invoke<OceanAppStatus>('add_ocean_app', { name, appId, appSecret }),
+  removeOceanApp: (oceanId: number) => invoke<void>('remove_ocean_app', { oceanId }),
+  startOceanAuth: (oceanId: number) =>
+    invoke<{ accounts: AdAccount[] }>('start_ocean_auth', { oceanId }),
   listAdAccounts: () => invoke<AdAccount[]>('list_ad_accounts'),
   setStoreMapping: (storeId: number, adAccountId: string, enable: boolean) =>
     invoke<void>('set_store_mapping', { storeId, adAccountId, enable }),

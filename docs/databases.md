@@ -1,6 +1,6 @@
 # 数据库
 
-客户端为纯单机应用，数据存本地 SQLite（rusqlite bundled），库文件位于系统应用数据目录（Windows: `%APPDATA%/com.bluef1ash.dealerintegration/dealer-integration.db`），由 `src-tauri/src/db.rs` 在应用启动时打开、执行建表与渐进迁移（`ALTER TABLE` 补列，幂等）。凭证（会话 cookie、账号密码、巨量 token）**不入库**，存系统凭证库（`src-tauri/src/credentials.rs`，Windows 凭据管理器 / macOS 钥匙串）；例外是巨量 App ID / Secret，按用户决策（issue #13）经设置页存 `settings` 表。
+客户端为纯单机应用，数据存本地 SQLite（rusqlite bundled），库文件位于系统应用数据目录（Windows: `%APPDATA%/com.bluef1ash.dealerintegration/dealer-integration.db`），由 `src-tauri/src/db.rs` 在应用启动时打开、执行建表与渐进迁移（`ALTER TABLE` 补列，幂等）。凭证（会话 cookie、账号密码、巨量 token）**不入库**，存系统凭证库（`src-tauri/src/credentials.rs`，Windows 凭据管理器 / macOS 钥匙串）；例外是巨量 App ID / Secret，按用户决策（issue #13）经设置页存 `ocean_apps` 表（多应用，启动时自动迁移旧版 settings 单应用键）。
 
 ## 表结构
 
@@ -8,12 +8,11 @@
 
 | key | value | 写入方 |
 | --- | --- | --- |
-| `ocean.app_id` | 巨量引擎商业开放平台 App ID | 设置页 |
-| `ocean.app_secret` | 巨量引擎商业开放平台 App Secret | 设置页 |
-| `ocean.token.expires_at` | OAuth token 过期时间（unix 秒） | 调度器 |
 | `snapshot.hour` | 每日对账快照触发小时（0-23，默认 23） | 设置页 |
 | `scheduler.enabled` | 自动拉取开关（`1`/`0`，默认开） | 设置页 |
 | `scheduler.interval_minutes` | 自动拉取间隔分钟（15-1440，默认 60） | 设置页 |
+
+历史键 `ocean.app_id` / `ocean.app_secret`（旧版单应用凭证）在启动迁移 `repo::ocean_apps::migrate_legacy_db` 中消费后即删除，不再使用。
 
 ```sql
 CREATE TABLE IF NOT EXISTS settings (
@@ -76,13 +75,29 @@ CREATE TABLE IF NOT EXISTS store_pull_state (
 );
 ```
 
+### ocean_apps（巨量引擎应用，多应用管理）
+
+```sql
+CREATE TABLE IF NOT EXISTS ocean_apps (
+    id               INTEGER PRIMARY KEY AUTOINCREMENT,
+    name             TEXT NOT NULL,
+    app_id           TEXT NOT NULL UNIQUE,   -- 商业开放平台 App ID（数字串）
+    app_secret       TEXT NOT NULL,
+    token_expires_at INTEGER,                -- OAuth token 过期时间 unix 秒；NULL = 从未授权
+    created_at       INTEGER NOT NULL
+);
+```
+
+每个应用独立 OAuth 授权；token 本体按 `ocean:{app_id}:access_token` / `ocean:{app_id}:refresh_token` 分条存系统凭证库。调度器逐应用刷新（过期前 5 分钟）并拉取其名下账户的日报，未授权应用跳过。
+
 ### ad_accounts / store_ad_accounts（广告账户与门店多对多映射）
 
 ```sql
 CREATE TABLE IF NOT EXISTS ad_accounts (
-    id         TEXT PRIMARY KEY,    -- 巨量广告账户 ID
-    alias      TEXT NOT NULL DEFAULT '',
-    created_at INTEGER NOT NULL
+    id           TEXT PRIMARY KEY,    -- 巨量广告账户 ID
+    alias        TEXT NOT NULL DEFAULT '',
+    ocean_app_id INTEGER REFERENCES ocean_apps(id),  -- 归属应用；NULL = 来源应用已删除（报表保留，仅不再刷新）
+    created_at   INTEGER NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS store_ad_accounts (

@@ -116,15 +116,50 @@ pub fn load_store_password(account: &str) -> crate::error::AppResult<Option<Stri
     get(&store_password_name(account))
 }
 
-/// 巨量引擎 OAuth token（单一授权覆盖该公司全部授权账户）
-pub fn save_ocean_tokens(access: &str, refresh: &str) -> crate::error::AppResult<()> {
-    set("ocean:access_token", access)?;
-    set("ocean:refresh_token", refresh)?;
+/// 巨量引擎 OAuth token（按应用分条；一个应用的授权覆盖其名下全部广告账户）
+fn ocean_token_names(app_id: &str) -> (String, String) {
+    (
+        format!("ocean:{app_id}:access_token"),
+        format!("ocean:{app_id}:refresh_token"),
+    )
+}
+
+pub fn save_ocean_tokens(app_id: &str, access: &str, refresh: &str) -> crate::error::AppResult<()> {
+    let (access_name, refresh_name) = ocean_token_names(app_id);
+    set(&access_name, access)?;
+    set(&refresh_name, refresh)?;
     Ok(())
 }
 
-pub fn load_ocean_tokens() -> crate::error::AppResult<(Option<String>, Option<String>)> {
-    Ok((get("ocean:access_token")?, get("ocean:refresh_token")?))
+pub fn load_ocean_tokens(
+    app_id: &str,
+) -> crate::error::AppResult<(Option<String>, Option<String>)> {
+    let (access_name, refresh_name) = ocean_token_names(app_id);
+    Ok((get(&access_name)?, get(&refresh_name)?))
+}
+
+/// 删除应用时清理其 token
+pub fn delete_ocean_tokens(app_id: &str) -> crate::error::AppResult<()> {
+    let (access_name, refresh_name) = ocean_token_names(app_id);
+    delete(&access_name)?;
+    delete(&refresh_name)?;
+    Ok(())
+}
+
+/// 旧版全局 token 条目（多应用化前）迁移为按应用分条；无旧条目时为空操作
+pub fn migrate_legacy_tokens(app_id: &str) -> crate::error::AppResult<()> {
+    let legacy_access = get("ocean:access_token")?;
+    let Some(access) = legacy_access else {
+        return Ok(());
+    };
+    let Some(refresh) = get("ocean:refresh_token")? else {
+        return Ok(());
+    };
+    save_ocean_tokens(app_id, &access, &refresh)?;
+    delete("ocean:access_token")?;
+    delete("ocean:refresh_token")?;
+    eprintln!("[凭证] 巨量 token 已迁移至按应用条目 app_id={app_id}");
+    Ok(())
 }
 
 #[cfg(test)]

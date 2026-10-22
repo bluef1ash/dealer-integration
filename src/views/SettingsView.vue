@@ -2,6 +2,7 @@
 import { listen } from '@tauri-apps/api/event'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { api } from '../api'
+import OceanAppsPanel from '../components/OceanAppsPanel.vue'
 import { showToast } from '../store'
 import type { AdAccount, LoginEvent, SnapshotOutcome, StoreStatus } from '../types'
 import { fmtTime } from '../utils'
@@ -40,12 +41,6 @@ const INTERVAL_OPTIONS = [
 ]
 const snapshotHour = ref(23)
 
-// 巨量应用凭证（单应用，App ID / Secret 存本地 settings 表）
-const oceanAppId = ref('')
-const oceanAppSecret = ref('')
-const savingOcean = ref(false)
-const oceanHint = ref('')
-
 const unlisteners: Array<() => void> = []
 
 async function refresh(): Promise<void> {
@@ -63,45 +58,6 @@ async function refresh(): Promise<void> {
     schedInterval.value = sched.interval_minutes
   } catch (e) {
     showToast(`读取设置失败：${e}`)
-  }
-}
-
-async function loadOcean(): Promise<void> {
-  try {
-    const c = await api.getOceanCredentials()
-    oceanAppId.value = c.appId ?? ''
-    oceanAppSecret.value = c.appSecret ?? ''
-  } catch (e) {
-    oceanHint.value = `读取失败：${e}`
-  }
-}
-
-async function saveOcean(): Promise<void> {
-  const id = oceanAppId.value.trim()
-  const secret = oceanAppSecret.value.trim()
-  if (!id || !secret) {
-    oceanHint.value = 'App ID 与 App Secret 均不能为空'
-    return
-  }
-  savingOcean.value = true
-  try {
-    await api.saveOceanCredentials(id, secret)
-    oceanHint.value = '已保存'
-  } catch (e) {
-    oceanHint.value = `保存失败：${e}`
-  } finally {
-    savingOcean.value = false
-  }
-}
-
-async function authorizeOcean(): Promise<void> {
-  loginHint.value = '已打开系统浏览器完成巨量引擎授权…'
-  try {
-    const result = await api.startOceanAuth()
-    loginHint.value = `授权成功，同步到 ${result.accounts.length} 个广告账户`
-    await refresh()
-  } catch (e) {
-    loginHint.value = `授权失败：${e}`
   }
 }
 
@@ -197,7 +153,6 @@ async function snapshotNow(): Promise<void> {
 
 onMounted(async () => {
   await refresh()
-  await loadOcean()
   unlisteners.push(
     await listen<LoginEvent>('login://result', async (e) => {
       const { store_id, ok, message } = e.payload
@@ -344,7 +299,10 @@ const accountCount = computed(() => accounts.value.length)
             <thead>
               <tr>
                 <th>门店</th>
-                <th v-for="a in accounts" :key="a.id">{{ a.alias || a.id }}</th>
+                <th v-for="a in accounts" :key="a.id">
+                  {{ a.alias || a.id }}
+                  <small v-if="a.app_name" class="map-app">{{ a.app_name }}</small>
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -370,46 +328,9 @@ const accountCount = computed(() => accounts.value.length)
       </section>
     </section>
 
-    <!-- ── 巨量引擎应用 ── -->
+    <!-- ── 巨量引擎应用（多应用面板，独立组件） ── -->
     <section v-show="tab === 'ocean'" class="settings-pane" role="tabpanel">
-      <section class="panel">
-        <div class="panel-head">
-          <div>
-            <h2>巨量引擎应用</h2>
-            <p class="sub">商业开放平台的应用凭证，用于 OAuth 授权与 Marketing API 拉取报表</p>
-          </div>
-          <span class="pill" :class="oceanAppId ? 'pill-ok' : 'pill-warn'">{{ oceanAppId ? '已配置' : '未配置' }}</span>
-        </div>
-        <div class="field-row">
-          <label class="field">
-            <span>App ID</span>
-            <input v-model="oceanAppId" class="input" type="text" autocomplete="off" spellcheck="false" />
-          </label>
-          <label class="field">
-            <span>App Secret</span>
-            <input v-model="oceanAppSecret" class="input" type="password" autocomplete="new-password" spellcheck="false" />
-          </label>
-        </div>
-        <div class="form-actions">
-          <button class="btn btn-sm" :disabled="savingOcean" @click="saveOcean">
-            {{ savingOcean ? '保存中…' : '保存凭证' }}
-          </button>
-          <button class="btn btn-sm btn-primary" @click="authorizeOcean">去授权（系统浏览器）</button>
-          <span class="form-hint inline">OAuth 回调本机 127.0.0.1:1720，token 存系统凭证库</span>
-        </div>
-        <p v-if="oceanHint" class="form-hint" :class="{ 'is-error': oceanHint.startsWith('保存失败'), 'is-ok': oceanHint === '已保存' }">
-          {{ oceanHint }}
-        </p>
-      </section>
-
-      <section class="panel panel-note">
-        <h2>应用与账户的关系</h2>
-        <ul class="note-list">
-          <li><b>一个应用</b>：对应商业开放平台的一组 App ID / Secret，可授权多个广告账户与主体。</li>
-          <li><b>账户映射</b>：已授权账户再与门店做多对多绑定，决定广告消耗如何归因。</li>
-          <li><b>已授权账户</b>：{{ accounts.length ? accounts.map((a) => a.alias || a.id).join('、') : '尚无，完成 OAuth 后自动进入映射表' }}</li>
-        </ul>
-      </section>
+      <OceanAppsPanel />
     </section>
 
     <!-- ── 采集与对账 ── -->
@@ -493,7 +414,7 @@ const accountCount = computed(() => accounts.value.length)
         <ul class="note-list">
           <li><b>业务数据</b>：存本地 SQLite，位于系统应用数据目录。</li>
           <li><b>登录凭证</b>：巨懂车密码 / 会话、巨量 OAuth token 存系统凭证库。</li>
-          <li><b>巨量引擎应用</b>：App ID / Secret 存本地 settings 表。</li>
+          <li><b>巨量引擎应用</b>：多应用配置存本地 SQLite（ocean_apps 表），Secret 不回显。</li>
           <li><b>线索 ID</b>：以列表接口为主键，快照按飞鱼线索 ID 找回后合并。</li>
           <li><b>分发</b>：为手动安装包，无自动更新与多租户。</li>
         </ul>
@@ -503,20 +424,10 @@ const accountCount = computed(() => accounts.value.length)
 </template>
 
 <style scoped>
-.banner {
-  background: color-mix(in srgb, var(--accent) 9%, var(--surface));
-  border-radius: 8px;
-  padding: 10px 16px;
-  font-size: 13px;
-  margin-bottom: 2px;
-}
-
-.banner.warn {
-  background: color-mix(in srgb, var(--warn) 10%, var(--surface));
-  color: var(--warn);
-}
-
-.last-time {
-  font-size: 11.5px;
+.map-app {
+  display: block;
+  font-size: 10.5px;
+  font-weight: 400;
+  color: var(--muted);
 }
 </style>

@@ -109,50 +109,57 @@ async fn run_hourly(app: &AppHandle) -> crate::error::AppResult<()> {
     Ok(())
 }
 
-/// 巨量 token 过期前自动刷新，随后按日拉取近 7 天报表
+/// 巨量报表：逐应用刷新 token（过期前 5 分钟）并拉取近 7 天日报；
+/// 单应用环节尽力而为：未授权跳过、失败记日志，不影响其他应用
 async fn refresh_and_pull_ocean(app: &AppHandle) -> crate::error::AppResult<()> {
     let db = app.state::<Db>();
     let clients = app.state::<Clients>();
-    let (app_id_str, secret, access, refresh) = db.with(|conn| {
-        let creds = settings::get_ocean_credentials(conn)?;
-        let tokens = credentials::load_ocean_tokens()?;
-        Ok::<_, crate::error::AppError>((creds.app_id, creds.app_secret, tokens.0, tokens.1))
-    })?;
-    let (Some(app_id_str), Some(secret)) = (app_id_str, secret) else {
-        return Ok(()); // 未配置应用凭证：跳过
-    };
-    let (Some(access), Some(refresh)) = (access, refresh) else {
-        return Ok(()); // 未授权：跳过
-    };
-    let app_id: i64 = app_id_str.trim().parse().unwrap_or(0);
+    let apps = db.with(crate::repo::ocean_apps::list)?;
+    for ocean_app in apps {
+        let (Some(access), Some(refresh)) = credentials::load_ocean_tokens(&ocean_app.app_id)?
+        else {
+            continue; // 未授权：跳过
+        };
 
-    // 过期前 5 分钟自动刷新
-    let now = crate::db::now();
-    let valid_until: i64 = db.with(|conn| {
-        Ok(
-            settings::get_setting(conn, settings::KEY_OCEAN_TOKEN_EXPIRES)?
-                .and_then(|v| v.parse::<i64>().ok())
-                .unwrap_or(0),
-        )
-    })?;
-    let access = if valid_until.saturating_sub(now) < 300 {
-        let tokens = clients
-            .ocean
-            .refresh_token(app_id, secret.trim(), &refresh)
-            .await?;
-        credentials::save_ocean_tokens(&tokens.access_token, &tokens.refresh_token)?;
-        db.with_sql(|conn| {
-            settings::save_setting(
-                conn,
-                settings::KEY_OCEAN_TOKEN_EXPIRES,
-                &(now + tokens.expires_in).to_string(),
-            )
-        })?;
-        tokens.access_token
-    } else {
-        access
-    };
-    collector::pull_ocean_reports(&db, &clients.ocean, &access, 7).await?;
+        let now = crate::db::now();
+        let access = if ocean_app.token_expires_at.unwrap_or(0).saturating_sub(now) < 300 {
+            let app_id: i64 = ocean_app.app_id.trim().parse().unwrap_or(0);
+            match clients
+                .ocean
+                .refresh_token(app_id, ocean_app.app_secret.trim(), &refresh)
+                .await
+            {
+                Ok(tokens) => {
+                    credentials::save_ocean_tokens(
+                        &ocean_app.app_id,
+                        &tokens.access_token,
+                        &tokens.refresh_token,
+                    )?;
+                    db.with(|conn| {
+                        crate::repo::ocean_apps::set_token_expires(
+                            conn,
+                            ocean_app.id,
+                            now + tokens.expires_in,
+                        )
+                    })?;
+                    tokens.access_token
+                }
+                // 刷新失败仍用旧 token 拉一次，失败信息由拉取环节暴露
+                Err(e) => {
+                    eprintln!("[调度] 巨量应用 {} token 刷新失败: {e}", ocean_app.name);
+                    access
+                }
+            }
+        } else {
+            access
+        };
+
+        match collector::pull_ocean_reports(&db, &clients.ocean, ocean_app.id, &access, 7).await {
+            Ok(n) if n > 0 => eprintln!("[调度] {} 报表入库 {n} 行", ocean_app.name),
+            Ok(_) => {}
+            Err(e) => eprintln!("[调度] {} 报表拉取失败: {e}", ocean_app.name),
+        }
+    }
     Ok(())
 }
 

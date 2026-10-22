@@ -108,15 +108,17 @@ pub async fn pull_store(
     }
 }
 
-/// 巨量引擎报表拉取：账户 + 计划层级，按日近 N 天，入库并返回行数
+/// 巨量引擎报表拉取：单应用视角，账户 + 计划层级，按日近 N 天，入库并返回行数。
+/// 多应用时由调用方逐应用传入各自的 access_token 与应用行 ID。
 pub async fn pull_ocean_reports(
     db: &Db,
     client: &crate::ocean::Client,
+    ocean_app_row: i64,
     access_token: &str,
     days: i64,
 ) -> AppResult<usize> {
     let (advertiser_ids, from_date, to_date) = db.with(|conn| {
-        let ids: Vec<String> = crate::repo::leads::ad_account_ids(conn)?;
+        let ids: Vec<String> = crate::repo::leads::ad_account_ids_for_app(conn, ocean_app_row)?;
         let to = chrono::Local::now().date_naive();
         let from = to - chrono::Duration::days(days.max(1) - 1);
         Ok::<_, AppError>((ids, from.to_string(), to.to_string()))

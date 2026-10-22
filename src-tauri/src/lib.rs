@@ -30,6 +30,18 @@ pub fn run() {
             fs::create_dir_all(&dir).expect("无法创建应用数据目录");
             let database =
                 db::Db::open(&dir.join("dealer-integration.db")).expect("无法打开本地数据库");
+            // 旧版单应用巨量凭证（settings 键 + 全局 token）迁移为多应用首行；
+            // 失败只留痕不阻断启动，旧键未消费前下次启动会重试
+            match database.with(repo::ocean_apps::migrate_legacy_db) {
+                Ok(Some(app_id)) => {
+                    if let Err(e) = credentials::migrate_legacy_tokens(&app_id) {
+                        eprintln!("[迁移] 巨量旧 token 迁移失败（下次启动重试）: {e}");
+                    }
+                    let _ = database.with(repo::ocean_apps::clear_legacy_keys);
+                }
+                Ok(None) => {}
+                Err(e) => eprintln!("[迁移] 巨量旧凭证迁移失败（下次启动重试）: {e}"),
+            }
             app.manage(database);
             app.manage(Clients {
                 jd: judongche::client::Client::new(),
@@ -49,10 +61,11 @@ pub fn run() {
             commands::get_status_options,
             commands::get_dashboard,
             commands::export_leads,
-            commands::get_ocean_credentials,
-            commands::save_ocean_credentials,
-            commands::start_ocean_auth,
-            commands::list_ad_accounts,
+            commands::ocean::list_ocean_apps,
+            commands::ocean::add_ocean_app,
+            commands::ocean::remove_ocean_app,
+            commands::ocean::start_ocean_auth,
+            commands::ocean::list_ad_accounts,
             commands::set_store_mapping,
             commands::get_store_ad_accounts,
             commands::run_snapshot,

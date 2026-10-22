@@ -33,6 +33,10 @@ impl Db {
         add_column(
             "ALTER TABLE plan_reports_daily ADD COLUMN impressions INTEGER NOT NULL DEFAULT 0",
         );
+        // 多应用化：广告账户记录归属的巨量应用（旧行为 NULL，启动迁移回填）
+        add_column(
+            "ALTER TABLE ad_accounts ADD COLUMN ocean_app_id INTEGER REFERENCES ocean_apps(id)",
+        );
         let _ = conn
             .execute_batch("CREATE INDEX IF NOT EXISTS idx_leads_feiyu ON leads(feiyu_leads_id)");
     }
@@ -106,10 +110,20 @@ CREATE TABLE IF NOT EXISTS store_pull_state (
     backfilled      INTEGER NOT NULL DEFAULT 0
 );
 
+CREATE TABLE IF NOT EXISTS ocean_apps (
+    id               INTEGER PRIMARY KEY AUTOINCREMENT,
+    name             TEXT NOT NULL,
+    app_id           TEXT NOT NULL UNIQUE,
+    app_secret       TEXT NOT NULL,
+    token_expires_at INTEGER,
+    created_at       INTEGER NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS ad_accounts (
-    id         TEXT PRIMARY KEY,
-    alias      TEXT NOT NULL DEFAULT '',
-    created_at INTEGER NOT NULL
+    id           TEXT PRIMARY KEY,
+    alias        TEXT NOT NULL DEFAULT '',
+    ocean_app_id INTEGER REFERENCES ocean_apps(id),
+    created_at   INTEGER NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS store_ad_accounts (

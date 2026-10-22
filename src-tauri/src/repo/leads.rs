@@ -110,7 +110,7 @@ pub fn upsert_plan_reports(conn: &Connection, rows: &[PlanReportRow]) -> AppResu
     Ok(n)
 }
 
-/// 确保广告账户存在（OAuth 授权/报表入库时补档）
+/// 确保广告账户存在（报表入库时补档，不带应用归属）
 pub fn ensure_ad_account(conn: &Connection, id: &str, alias: &str) -> AppResult<()> {
     conn.execute(
         "INSERT INTO ad_accounts (id, alias, created_at) VALUES (?1, ?2, ?3)
@@ -120,11 +120,49 @@ pub fn ensure_ad_account(conn: &Connection, id: &str, alias: &str) -> AppResult<
     Ok(())
 }
 
-/// 全部广告账户 ID（报表拉取范围）
-pub fn ad_account_ids(conn: &Connection) -> AppResult<Vec<String>> {
-    let mut stmt = conn.prepare("SELECT id FROM ad_accounts ORDER BY id")?;
+/// OAuth 授权补档并绑定归属应用；同一账户再次在其他应用下授权时改判归属
+pub fn attach_ad_account(
+    conn: &Connection,
+    id: &str,
+    alias: &str,
+    ocean_app_id: i64,
+) -> AppResult<()> {
+    conn.execute(
+        "INSERT INTO ad_accounts (id, alias, ocean_app_id, created_at) VALUES (?1, ?2, ?3, ?4)
+         ON CONFLICT(id) DO UPDATE SET
+            ocean_app_id = excluded.ocean_app_id,
+            alias = CASE WHEN excluded.alias = '' THEN ad_accounts.alias ELSE excluded.alias END",
+        rusqlite::params![id, alias, ocean_app_id, crate::db::now()],
+    )?;
+    Ok(())
+}
+
+/// 全部广告账户（映射表展示，带归属应用名）
+pub fn ad_accounts(conn: &Connection) -> AppResult<Vec<crate::models::AdAccount>> {
+    let mut stmt = conn.prepare(
+        "SELECT a.id, a.alias, a.ocean_app_id, o.name
+         FROM ad_accounts a LEFT JOIN ocean_apps o ON o.id = a.ocean_app_id
+         ORDER BY a.id",
+    )?;
     let rows = stmt
-        .query_map([], |r| r.get(0))?
+        .query_map([], |r| {
+            Ok(crate::models::AdAccount {
+                id: r.get(0)?,
+                alias: r.get(1)?,
+                ocean_app_id: r.get(2)?,
+                app_name: r.get(3)?,
+            })
+        })?
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(rows)
+}
+
+/// 某应用名下的广告账户 ID（报表拉取范围）
+pub fn ad_account_ids_for_app(conn: &Connection, ocean_app_id: i64) -> AppResult<Vec<String>> {
+    let mut stmt =
+        conn.prepare("SELECT id FROM ad_accounts WHERE ocean_app_id = ?1 ORDER BY id")?;
+    let rows = stmt
+        .query_map([ocean_app_id], |r| r.get(0))?
         .collect::<Result<Vec<_>, _>>()?;
     Ok(rows)
 }
