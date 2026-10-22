@@ -109,12 +109,25 @@ async fn run_hourly(app: &AppHandle) -> crate::error::AppResult<()> {
     Ok(())
 }
 
+/// 单应用巨量拉取结果（调度与竞价页手动按钮共用）
+#[derive(serde::Serialize)]
+pub struct OceanPullOutcome {
+    pub app_name: String,
+    pub ok: bool,
+    pub ingested: usize,
+    pub error: String,
+}
+
 /// 巨量报表：逐应用刷新 token（过期前 5 分钟）并拉取近 7 天日报；
-/// 单应用环节尽力而为：未授权跳过、失败记日志，不影响其他应用
-async fn refresh_and_pull_ocean(app: &AppHandle) -> crate::error::AppResult<()> {
+/// 单应用环节尽力而为：未授权跳过、失败记日志，不影响其他应用。
+/// 调度器与竞价页手动「拉取巨量报表」共用此链路
+pub async fn refresh_and_pull_ocean(
+    app: &AppHandle,
+) -> crate::error::AppResult<Vec<OceanPullOutcome>> {
     let db = app.state::<Db>();
     let clients = app.state::<Clients>();
     let apps = db.with(crate::repo::ocean_apps::list)?;
+    let mut outcomes = Vec::new();
     for ocean_app in apps {
         let tokens = db.with(|conn| credentials::load_ocean_tokens(conn, &ocean_app.app_id))?;
         let (Some(access), Some(refresh)) = tokens else {
@@ -158,12 +171,29 @@ async fn refresh_and_pull_ocean(app: &AppHandle) -> crate::error::AppResult<()> 
         };
 
         match collector::pull_ocean_reports(&db, &clients.ocean, ocean_app.id, &access, 7).await {
-            Ok(n) if n > 0 => eprintln!("[调度] {} 报表入库 {n} 行", ocean_app.name),
-            Ok(_) => {}
-            Err(e) => eprintln!("[调度] {} 报表拉取失败: {e}", ocean_app.name),
+            Ok(n) => {
+                if n > 0 {
+                    eprintln!("[调度] {} 报表入库 {n} 行", ocean_app.name);
+                }
+                outcomes.push(OceanPullOutcome {
+                    app_name: ocean_app.name.clone(),
+                    ok: true,
+                    ingested: n,
+                    error: String::new(),
+                });
+            }
+            Err(e) => {
+                eprintln!("[调度] {} 报表拉取失败: {e}", ocean_app.name);
+                outcomes.push(OceanPullOutcome {
+                    app_name: ocean_app.name.clone(),
+                    ok: false,
+                    ingested: 0,
+                    error: e.to_string(),
+                });
+            }
         }
     }
-    Ok(())
+    Ok(outcomes)
 }
 
 /// 到达配置时刻（默认 23 点）且今日尚无快照时执行对账

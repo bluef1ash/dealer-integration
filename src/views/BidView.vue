@@ -1,13 +1,15 @@
 <script setup lang="ts">
+import { NButton } from 'naive-ui'
 import { computed, onMounted, ref } from 'vue'
 import { api } from '../api'
 import { useUiStore } from '../stores'
-import type { Dashboard as Dash } from '../types'
+import type { Dashboard as Dash, OceanPullOutcome } from '../types'
 
 const ui = useUiStore()
 const { showToast } = useUiStore()
 
 const dash = ref<Dash | null>(null)
+const pulling = ref(false)
 type BidRange = 'Today' | 'Last7' | 'Last30'
 const range = ref<BidRange>('Today')
 
@@ -16,6 +18,29 @@ async function load(): Promise<void> {
     dash.value = await api.getDashboard({ kind: range.value }, ui.storeId)
   } catch (e) {
     showToast(`竞价数据加载失败：${e}`)
+  }
+}
+
+/// 本页拉取的是巨量营销报表（与调度器同链路；线索页拉的巨懂车在此不触发）
+async function pullOcean(): Promise<void> {
+  if (pulling.value) {
+    return
+  }
+  pulling.value = true
+  try {
+    const outcomes: OceanPullOutcome[] = await api.pullOceanNow()
+    const ok = outcomes.filter((o) => o.ok)
+    showToast(
+      ok.length
+        ? `巨量报表已入库 ${ok.reduce((n, o) => n + o.ingested, 0)} 行（${ok.map((o) => o.app_name).join('、')}）`
+        : `拉取失败：${outcomes[0]?.error ?? '未授权巨量应用'}`,
+    )
+    window.dispatchEvent(new CustomEvent('ocean-pulled'))
+    await load()
+  } catch (e) {
+    showToast(`拉取失败：${e}`)
+  } finally {
+    pulling.value = false
   }
 }
 
@@ -50,6 +75,9 @@ onMounted(load)
       <span class="dot" :class="dash ? 'ok' : 'warn'"></span>
       <span>巨量引擎 Marketing API · 数据为最近一次同步口径</span>
     </div>
+    <n-button type="primary" :loading="pulling" @click="pullOcean">
+      {{ pulling ? '拉取中…' : '拉取巨量报表' }}
+    </n-button>
   </div>
 
   <div class="bid-summary">

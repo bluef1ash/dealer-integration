@@ -5,7 +5,14 @@ import { onMounted, ref, watch } from 'vue'
 import { api } from '../api'
 import LeadDrawer from '../components/LeadDrawer.vue'
 import { useUiStore } from '../stores/index.ts'
-import type { FetchState, FilterOptions, LeadDetail, LeadPage, LeadsFilter } from '../types'
+import type {
+  FetchState,
+  FilterOptions,
+  LeadDetail,
+  LeadPage,
+  LeadsFilter,
+  PullOutcome,
+} from '../types'
 import { fmtFull } from '../utils'
 
 const ui = useUiStore()
@@ -15,6 +22,7 @@ const PAGE_SIZE = 8
 const state = ref<FetchState>('loading')
 const data = ref<LeadPage | null>(null)
 const exporting = ref(false)
+const pulling = ref(false)
 
 const q = ref('')
 const status = ref<string | null>(null)
@@ -113,6 +121,29 @@ async function exportExcel(): Promise<void> {
     showToast(`导出失败：${e}`)
   } finally {
     exporting.value = false
+  }
+}
+
+/// 本页拉取的是巨懂车线索（竞价页拉的是巨量报表，二者各自独立）
+async function pullLeads(): Promise<void> {
+  if (pulling.value) {
+    return
+  }
+  pulling.value = true
+  try {
+    const outcomes: PullOutcome[] = await api.pullNow(ui.storeId)
+    const ok = outcomes.filter((o) => o.ok)
+    showToast(
+      ok.length
+        ? `已拉取 ${ok.length} 家门店、入库 ${ok.reduce((n, o) => n + o.ingested, 0)} 条线索`
+        : `拉取失败：${outcomes[0]?.error ?? '无门店'}`,
+    )
+    window.dispatchEvent(new CustomEvent('leads-pulled'))
+    await load()
+  } catch (e) {
+    showToast(`拉取失败：${e}`)
+  } finally {
+    pulling.value = false
   }
 }
 
@@ -218,9 +249,14 @@ onMounted(async () => {
         @update:value="reload"
       />
     </div>
-    <n-button :disabled="exporting" @click="exportExcel">
-      {{ exporting ? '导出中…' : '导出 Excel' }}
-    </n-button>
+    <div class="toolbar-actions">
+      <n-button :disabled="exporting" @click="exportExcel">
+        {{ exporting ? '导出中…' : '导出 Excel' }}
+      </n-button>
+      <n-button type="primary" :loading="pulling" @click="pullLeads">
+        {{ pulling ? '拉取中…' : '拉取线索' }}
+      </n-button>
+    </div>
   </div>
 
   <section v-if="state === 'error'" class="panel panel-note">

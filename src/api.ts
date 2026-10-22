@@ -7,6 +7,7 @@ import type {
   LeadPage,
   LeadsFilter,
   OceanAppStatus,
+  OceanPullOutcome,
   PullOutcome,
   Range,
   SchedulerConfig,
@@ -23,6 +24,7 @@ export const api = {
   getCollectionStatus: () => invoke<StoreStatus[]>('get_collection_status'),
   startLogin: (storeId: number) => invoke<void>('start_login', { storeId }),
   pullNow: (storeId: number | null) => invoke<PullOutcome[]>('pull_now', { storeId }),
+  pullOceanNow: () => invoke<OceanPullOutcome[]>('pull_ocean_now'),
   getLeads: (filter: LeadsFilter) => invoke<LeadPage>('get_leads', { filter }),
   getLeadsFilterOptions: (storeId: number | null) =>
     invoke<FilterOptions>('get_leads_filter_options', { storeId }),

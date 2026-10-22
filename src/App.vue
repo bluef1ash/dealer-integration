@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { listen } from '@tauri-apps/api/event'
 import { getCurrentWindow } from '@tauri-apps/api/window'
-import { dateZhCN, NButton, NConfigProvider, NSelect, NTooltip, zhCN } from 'naive-ui'
+import { dateZhCN, NConfigProvider, NSelect, NTooltip, zhCN } from 'naive-ui'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { api } from './api'
 import { useUiStore, type ViewKey } from './stores/index.ts'
-import type { PullOutcome, Store, StoreStatus } from './types'
+import type { Store, StoreStatus } from './types'
 import { fmtTime } from './utils'
 import { themeOverrides } from './utils/theme'
 import BidView from './views/BidView.vue'
@@ -52,7 +52,6 @@ const { showToast } = useUiStore()
 
 const stores = ref<Store[]>([])
 const statuses = ref<StoreStatus[]>([])
-const pulling = ref(false)
 const lastPullAt = ref<number | null>(null)
 const unlisteners: Array<() => void> = []
 
@@ -80,12 +79,9 @@ const pageHead = computed(() => {
     ui.storeId === null ? '全部门店' : (stores.value.find((s) => s.id === ui.storeId)?.name ?? '')
   return { ...PAGE_HEAD[ui.view], sub: `${scope} · ${PAGE_HEAD[ui.view].sub}` }
 })
-const syncText = computed(() => {
-  if (pulling.value) {
-    return '同步中…'
-  }
-  return lastPullAt.value ? `${fmtTime(lastPullAt.value)} 已同步` : '尚未同步'
-})
+const syncText = computed(() =>
+  lastPullAt.value ? `${fmtTime(lastPullAt.value)} 已同步` : '尚未同步',
+)
 
 async function refreshStatus(): Promise<void> {
   try {
@@ -95,32 +91,29 @@ async function refreshStatus(): Promise<void> {
   }
 }
 
-async function pullNow(): Promise<void> {
-  pulling.value = true
-  try {
-    const outcomes: PullOutcome[] = await api.pullNow(ui.storeId)
-    const ok = outcomes.filter((o) => o.ok)
-    lastPullAt.value = Math.floor(Date.now() / 1000)
-    showToast(
-      ok.length
-        ? `已拉取 ${ok.length} 家门店、入库 ${ok.reduce((n, o) => n + o.ingested, 0)} 条线索`
-        : `拉取失败：${outcomes[0]?.error ?? '无门店'}`,
-    )
-    await refreshStatus()
-  } catch (e) {
-    showToast(`拉取失败：${e}`)
-  } finally {
-    pulling.value = false
-  }
-}
-
 async function toggleMaximize(): Promise<void> {
   await win.toggleMaximize()
+}
+
+function markSynced(): void {
+  lastPullAt.value = Math.floor(Date.now() / 1000)
+}
+
+// 拉取按钮在各页自持（线索页拉巨懂车、竞价页拉巨量），侧栏只负责同步时间与采集状态
+async function onLeadsPulled(): Promise<void> {
+  markSynced()
+  await refreshStatus()
+}
+
+function onOceanPulled(): void {
+  markSynced()
 }
 
 onMounted(async () => {
   stores.value = await api.listStores().catch(() => [])
   await refreshStatus()
+  window.addEventListener('leads-pulled', onLeadsPulled)
+  window.addEventListener('ocean-pulled', onOceanPulled)
   unlisteners.push(
     await listen('login://pulled', () => refreshStatus()),
     await listen<{ store_id: number; reason: string }>('login://needs-human', (e) => {
@@ -133,6 +126,8 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
+  window.removeEventListener('leads-pulled', onLeadsPulled)
+  window.removeEventListener('ocean-pulled', onOceanPulled)
   for (const off of unlisteners) {
     off()
   }
@@ -255,21 +250,10 @@ onUnmounted(() => {
               @update:value="ui.storeId = $event || null"
             />
           </div>
-          <span class="sync" :class="{ 'is-busy': pulling }">
-            <span class="dot" :class="pulling ? 'warn' : 'ok'"></span>
+          <span class="sync">
+            <span class="dot ok"></span>
             <span>{{ syncText }}</span>
           </span>
-          <n-button
-            v-if="ui.view !== 'settings'"
-            type="primary"
-            :disabled="pulling"
-            @click="pullNow"
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
-              <path d="M20 11a8 8 0 1 0-2.3 5.7M20 5v6h-6" />
-            </svg>
-            <span>{{ pulling ? '拉取中…' : '立即拉取' }}</span>
-          </n-button>
         </div>
       </header>
 

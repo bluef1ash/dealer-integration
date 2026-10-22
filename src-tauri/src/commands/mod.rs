@@ -11,7 +11,7 @@ use crate::db::Db;
 use crate::error::{AppError, AppResult};
 use crate::judongche::client::{Client as JdClient, LeadsWindow};
 use crate::models::{Dashboard, LeadPage, LeadsFilter, Range, Store};
-use crate::{collector, login, query, repo, settings, snapshot};
+use crate::{collector, login, query, repo, scheduler, settings, snapshot};
 
 pub use ocean::{
     add_ocean_app, list_ad_accounts, list_ocean_apps, remove_ocean_app, start_ocean_auth,
@@ -152,6 +152,15 @@ pub async fn pull_now(
         outcomes.push(outcome);
     }
     Ok(outcomes)
+}
+
+/// 手动拉取巨量引擎报表：与调度器同一链路（逐应用刷新 token 后拉近 7 天日报），
+/// 逐应用返回入库结果供竞价页提示
+#[tauri::command]
+pub async fn pull_ocean_now(app: AppHandle) -> Result<Vec<scheduler::OceanPullOutcome>, String> {
+    scheduler::refresh_and_pull_ocean(&app)
+        .await
+        .map_err(err_string)
 }
 
 // ---------- 查询与导出（issue #7 / #9） ----------

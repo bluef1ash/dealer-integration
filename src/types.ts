@@ -31,6 +31,14 @@ export interface PullOutcome {
   error: string
 }
 
+/** 巨量引擎单应用报表拉取结果（竞价页手动按钮与调度共用） */
+export interface OceanPullOutcome {
+  app_name: string
+  ok: boolean
+  ingested: number
+  error: string
+}
+
 /** 线索明细行（出库：列表/导出用，附带门店名） */
 export interface LeadDetail {
   leads_id: string
