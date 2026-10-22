@@ -130,24 +130,25 @@ impl Client {
     }
 }
 
-/// 把授权范围展开为可核算广告账户。任何一步失败都不阻断授权流程：
-/// 查不到角色清单时回退 token 返回 id（保持旧行为，由报表调用侧暴露角色问题）。
+/// 把授权范围展开为可核算广告账户。仅「已授权账户接口本身失败」时回退 token 返回 id
+/// （对抖动容错）；接口正常但无可用广告账户就返回空——回退塞入的非广告账户 id
+/// 只会让调度轮空转报 40002（真机教训）。
 pub async fn sync_advertiser_accounts(
     client: &Client,
     token: &str,
     token_ids: &[Value],
 ) -> Vec<AuthorizedAccount> {
     let authorized = match client.fetch_authorized_accounts(token).await {
-        Ok(list) if !list.is_empty() => list,
-        Ok(_) => {
-            eprintln!("[OAuth] 已授权账户列表为空，回退 token 返回 id");
-            return fallback_accounts(token_ids);
-        }
+        Ok(list) => list,
         Err(e) => {
             eprintln!("[OAuth] 已授权账户查询失败，回退 token 返回 id: {e}");
             return fallback_accounts(token_ids);
         }
     };
+    if authorized.is_empty() {
+        eprintln!("[OAuth] 已授权账户列表为空，该登录名下没有可授权账户");
+        return Vec::new();
+    }
     let mut out: Vec<AuthorizedAccount> = Vec::new();
     for acc in &authorized {
         // 每账户一行角色日志：40002 类问题的确诊线索
@@ -202,8 +203,7 @@ pub async fn sync_advertiser_accounts(
     let mut seen = std::collections::HashSet::new();
     out.retain(|acc| seen.insert(acc.id.clone()));
     if out.is_empty() {
-        eprintln!("[OAuth] 角色展开后无可用广告账户，回退 token 返回 id");
-        return fallback_accounts(token_ids);
+        eprintln!("[OAuth] 角色展开后无可用广告账户（详见上方各账户角色日志）");
     }
     out
 }

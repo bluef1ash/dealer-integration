@@ -147,6 +147,8 @@ impl Client {
                 serde_json::json!(query.dimensions).to_string(),
             ),
             ("metrics", serde_json::json!(REQUEST_METRICS).to_string()),
+            // 平台校验 filters 必传（真机 40000），无过滤条件传空数组
+            ("filters", "[]".to_string()),
             ("start_time", format!("{} 00:00:00", query.from_date)),
             ("end_time", format!("{} 23:59:59", query.to_date)),
             ("page", query.page.to_string()),

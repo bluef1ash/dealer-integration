@@ -147,6 +147,36 @@ pub fn attach_ad_account(
     Ok(())
 }
 
+/// 清退该应用下不在保留名单内的账户映射（角色展开口径修正后旧映射会整体失效）。
+/// 与应用删除同口径：只解绑归属（ocean_app_id 置空），报表日行保留、不再刷新
+pub fn detach_stale_ad_accounts(
+    conn: &Connection,
+    ocean_app_id: i64,
+    keep: &[String],
+) -> AppResult<usize> {
+    if keep.is_empty() {
+        let n = conn.execute(
+            "UPDATE ad_accounts SET ocean_app_id = NULL WHERE ocean_app_id = ?1",
+            rusqlite::params![ocean_app_id],
+        )?;
+        return Ok(n);
+    }
+    let placeholders = keep
+        .iter()
+        .enumerate()
+        .map(|(i, _)| format!("?{}", i + 2))
+        .collect::<Vec<_>>()
+        .join(", ");
+    let sql = format!(
+        "UPDATE ad_accounts SET ocean_app_id = NULL
+         WHERE ocean_app_id = ?1 AND id NOT IN ({placeholders})"
+    );
+    let mut params: Vec<&dyn rusqlite::ToSql> = vec![&ocean_app_id];
+    params.extend(keep.iter().map(|s| s as &dyn rusqlite::ToSql));
+    let n = conn.execute(&sql, params.as_slice())?;
+    Ok(n)
+}
+
 /// 全部广告账户（映射表展示，带归属应用名）
 pub fn ad_accounts(conn: &Connection) -> AppResult<Vec<crate::models::AdAccount>> {
     let mut stmt = conn.prepare(
@@ -189,6 +219,40 @@ mod tests {
             leads_time: 100,
             ..Default::default()
         }
+    }
+
+    /// 清退只解绑本应用下不在名单内的归属（ocean_app_id 置空），行与其他应用不受影响
+    #[test]
+    fn detach_stale_ad_accounts_scoped_to_app() {
+        let db = Db::open_in_memory();
+        db.with(|conn| {
+            let app1 = crate::repo::ocean_apps::insert(conn, "应用一", "11", "s1")?;
+            let app2 = crate::repo::ocean_apps::insert(conn, "应用二", "22", "s2")?;
+            attach_ad_account(conn, "A", "甲", app1.id)?;
+            attach_ad_account(conn, "B", "", app1.id)?;
+            attach_ad_account(conn, "C", "", app1.id)?;
+            attach_ad_account(conn, "D", "", app2.id)?;
+            let removed = detach_stale_ad_accounts(conn, app1.id, &["A".to_string()])?;
+            assert_eq!(removed, 2);
+            let owner_of = |conn: &rusqlite::Connection, id: &str| -> Option<i64> {
+                conn.query_row(
+                    "SELECT ocean_app_id FROM ad_accounts WHERE id = ?1",
+                    rusqlite::params![id],
+                    |r| r.get(0),
+                )
+                .unwrap()
+            };
+            let conn_ref = conn;
+            assert_eq!(owner_of(conn_ref, "A"), Some(app1.id));
+            assert_eq!(owner_of(conn_ref, "B"), None);
+            assert_eq!(owner_of(conn_ref, "C"), None);
+            assert_eq!(owner_of(conn_ref, "D"), Some(app2.id));
+            // 保留名单为空 → 解绑该应用全部分归属，不影响其他应用
+            assert_eq!(detach_stale_ad_accounts(conn, app2.id, &[])?, 1);
+            assert_eq!(owner_of(conn_ref, "D"), None);
+            Ok(())
+        })
+        .unwrap();
     }
 
     /// 同一线索重复写入以新值为准且不产生重复行（幂等语义）

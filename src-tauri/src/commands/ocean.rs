@@ -146,6 +146,16 @@ pub async fn start_ocean_auth(
         for account in &accounts {
             repo::leads::attach_ad_account(conn, &account.id, &account.alias, ocean_app.id)?;
         }
+        // 角色展开口径修正后旧映射可能整体失效：清退不在本次展开名单内的映射
+        // （报表日行保留）；清退数仅记日志
+        let keep: Vec<String> = accounts.iter().map(|a| a.id.clone()).collect();
+        let removed = repo::leads::detach_stale_ad_accounts(conn, ocean_app.id, &keep)?;
+        if removed > 0 {
+            eprintln!(
+                "[OAuth] 应用 {} 清退 {removed} 个失效账户映射",
+                ocean_app.name
+            );
+        }
         Ok(())
     })
     .map_err(err_string)?;
