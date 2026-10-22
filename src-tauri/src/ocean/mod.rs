@@ -24,6 +24,9 @@ pub const REPORT_PAGE_SIZE: usize = 100;
 const AUTHORIZED_ACCOUNTS_URL: &str = "https://api.oceanengine.com/open_api/oauth2/advertiser/get/";
 /// 升级版工作台下账户列表（工作台角色展开用）
 const EBP_ACCOUNT_LIST_URL: &str = "https://api.oceanengine.com/open_api/2/ebp/advertiser/list/";
+/// 代理商名下广告主（AGENT/CHILD_AGENT 角色展开用；GET，响应 data.list 为纯 id 数组）
+const AGENT_ADVERTISER_SELECT_URL: &str =
+    "https://api.oceanengine.com/open_api/2/agent/advertiser/select/";
 // 授权页真机校正（2026-10-22，与开发者后台生成的官方授权链接逐字比对）：
 // 域名为 open.oceanengine.com/audit/oauth.html，参数名是 app_id（非 client_id），
 // 不携带 redirect_uri（回调绑定在后台登记的地址）；旧 external/oauth/authorize 已 404，
