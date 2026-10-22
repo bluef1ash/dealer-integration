@@ -26,18 +26,13 @@ pub fn save_setting(conn: &Connection, key: &str, value: &str) -> rusqlite::Resu
     Ok(())
 }
 
-pub fn delete_setting(conn: &Connection, key: &str) -> rusqlite::Result<()> {
-    conn.execute("DELETE FROM settings WHERE key = ?1", [key])?;
-    Ok(())
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::db::Db;
 
     #[test]
-    fn save_read_delete_roundtrip() {
+    fn save_read_roundtrip() {
         let db = Db::open_in_memory();
         db.with(|conn| {
             save_setting(conn, KEY_SNAPSHOT_HOUR, "23").unwrap();
@@ -50,8 +45,6 @@ mod tests {
                 get_setting(conn, KEY_SNAPSHOT_HOUR).unwrap().as_deref(),
                 Some("8")
             );
-            delete_setting(conn, KEY_SNAPSHOT_HOUR).unwrap();
-            assert_eq!(get_setting(conn, KEY_SNAPSHOT_HOUR).unwrap(), None);
             Ok(())
         })
         .unwrap();

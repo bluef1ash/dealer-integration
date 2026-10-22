@@ -146,22 +146,6 @@ pub fn password_of(conn: &Connection, store_id: i64) -> AppResult<Option<String>
     Ok(if pw.is_empty() { None } else { Some(pw) })
 }
 
-/// 旧版密码存系统凭证库，启动时迁入库内并清除旧条目（幂等；库内已有值时只清理凭证库）
-pub fn migrate_keyring_passwords(conn: &Connection) -> AppResult<usize> {
-    let mut moved = 0;
-    for store in list(conn)? {
-        let Some(pw) = crate::credentials::load_legacy_password(&store.account)? else {
-            continue;
-        };
-        if password_of(conn, store.id)?.is_none() {
-            set_password(conn, store.id, &pw)?;
-            moved += 1;
-        }
-        crate::credentials::delete_legacy_password(&store.account)?;
-    }
-    Ok(moved)
-}
-
 /// 门店 ↔ 广告账户映射（多对多）
 pub fn set_mapping(
     conn: &Connection,

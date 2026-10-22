@@ -26,8 +26,6 @@ tauri-build = { version = "2", features = [] }
 [dependencies]
 calamine = "0.30.1"
 chrono = { version = "0.4.45", features = ["serde"] }
-# 仅旧数据迁移用（凭证库 → SQLite，见 credentials::migrate_keyring_into_db）；迁移窗口结束后可移除
-keyring = { version = "3.6.3", features = ["windows-native", "apple-native"] }
 reqwest = { version = "0.13.3", default-features = false, features = ["json", "rustls"] }
 rusqlite = { version = "0.40.2", features = ["bundled"] }
 rust_xlsxwriter = "0.92.0"

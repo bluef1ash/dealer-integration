@@ -1,6 +1,6 @@
 # 数据库
 
-客户端为纯单机应用，数据存本地 SQLite（rusqlite bundled），库文件位于系统应用数据目录（Windows: `%APPDATA%/com.bluef1ash.dealerintegration/dealer-integration.db`），由 `src-tauri/src/db.rs` 在应用启动时打开、执行建表与渐进迁移（`ALTER TABLE` 补列，幂等）。**全部凭证均存 SQLite，不依赖系统凭证库**（用户决策 2026-10-22：跨平台使用，凭证随库迁移）：会话 cookie 与巨量 token 在 `credentials` 键值表，巨懂车密码在 `stores.password`，巨量应用凭证在 `ocean_apps`；此前存 Windows 凭据管理器 / macOS 钥匙串的旧条目由启动迁移（`credentials::migrate_keyring_into_db` 等）自动搬入库内并清除，`keyring` 依赖仅为迁移期保留。
+客户端为纯单机应用，数据存本地 SQLite（rusqlite bundled），库文件位于系统应用数据目录（Windows: `%APPDATA%/com.bluef1ash.dealerintegration/dealer-integration.db`），由 `src-tauri/src/db.rs` 在应用启动时打开、执行建表与渐进迁移（`ALTER TABLE` 补列，幂等）。**全部凭证均存 SQLite，不依赖系统凭证库**（用户决策 2026-10-22：跨平台使用，凭证随库迁移）：会话 cookie 与巨量 token 在 `credentials` 键值表，巨懂车密码在 `stores.password`，巨量应用凭证在 `ocean_apps`。跨设备迁移直接拷贝库文件即可；自旧版（系统凭证库存凭证）升级不自动迁移，需重新登录门店并重新录入/授权巨量应用。
 
 ## 表结构
 
@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS settings (
 
 | name | value | 写入方 |
 | --- | --- | --- |
-| `store:{account}:cookie` | 巨懂车会话整罐（分片为旧版凭证库格式，入库后存单条） | 登录窗口捕获 |
+| `store:{account}:cookie` | 巨懂车会话整罐（单条存储） | 登录窗口捕获 |
 | `ocean:{app_id}:access_token` / `refresh_token` | 巨量 OAuth token | 授权 / 调度器刷新 |
 
 ```sql
@@ -42,7 +42,7 @@ CREATE TABLE IF NOT EXISTS stores (
     id         INTEGER PRIMARY KEY AUTOINCREMENT,
     name       TEXT NOT NULL,
     account    TEXT NOT NULL UNIQUE,   -- 巨懂车账号（手机号）
-    password   TEXT NOT NULL DEFAULT '', -- 巨懂车密码（明文，供自动重登；启动迁移从旧版凭证库迁入）
+    password   TEXT NOT NULL DEFAULT '', -- 巨懂车密码（明文，供自动重登）
     created_at INTEGER NOT NULL
 );
 ```
