@@ -126,17 +126,22 @@ pub async fn start_ocean_auth(
     })
     .map_err(err_string)?;
 
-    // 授权返回的账户归属该应用；同账户在其他应用再授权时改判归属
-    let accounts: Vec<AdAccount> = tokens
-        .advertiser_ids
-        .iter()
-        .map(|v| AdAccount {
-            id: json_value_to_string(v),
-            alias: String::new(),
-            ocean_app_id: Some(ocean_app.id),
-            app_name: Some(ocean_app.name.clone()),
-        })
-        .collect();
+    // 授权范围展开为可核算广告账户：token 返回的 id 可能是工作台等角色（报表 40002），
+    // 按角色展开为真实广告账户；同 id 在其他应用再授权时改判归属
+    let accounts: Vec<AdAccount> = ocean::accounts::sync_advertiser_accounts(
+        &clients.ocean,
+        &tokens.access_token,
+        &tokens.advertiser_ids,
+    )
+    .await
+    .into_iter()
+    .map(|acc| AdAccount {
+        id: acc.id,
+        alias: acc.name,
+        ocean_app_id: Some(ocean_app.id),
+        app_name: Some(ocean_app.name.clone()),
+    })
+    .collect();
     db.with(|conn| {
         for account in &accounts {
             repo::leads::attach_ad_account(conn, &account.id, &account.alias, ocean_app.id)?;
@@ -154,13 +159,6 @@ pub fn list_ad_accounts(db: State<'_, Db>) -> Result<Vec<AdAccount>, String> {
 }
 
 // ---------- 辅助 ----------
-
-fn json_value_to_string(v: &serde_json::Value) -> String {
-    match v {
-        serde_json::Value::String(s) => s.clone(),
-        other => other.to_string(),
-    }
-}
 
 /// 应用内弹窗完成 OAuth：on_navigation 拦截回调导航（127.0.0.1:1720）原生侧提取授权码，
 /// 无需系统浏览器与本机端口监听（浏览器方案的竞态与超时问题一并消除）

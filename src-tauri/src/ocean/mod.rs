@@ -1,6 +1,7 @@
 //! 巨量引擎 Marketing API 客户端与 OAuth。
 //! 端点/字段口径以官方文档为准，真实链路联调在手动冒烟中校正（spec 测试决策：平台联调不自动化）。
 
+pub mod accounts;
 pub mod parse;
 
 use serde::Deserialize;
@@ -17,6 +18,12 @@ const REPORT_URL: &str = "https://api.oceanengine.com/open_api/v3.0/report/custo
 const REQUEST_METRICS: &[&str] = &["stat_cost", "show_cnt", "click_cnt", "convert_cnt"];
 /// 自定义报表单页行数（官方上限 100）
 pub const REPORT_PAGE_SIZE: usize = 100;
+// 账户同步路由（2026-10-22 无凭证探测均在 api.oceanengine.com 存活）：
+// token 授权返回的 id 角色多样，报表仅认客户角色，工作台角色需展开为真实广告账户
+/// 已授权账户查询（带 account_role 角色）
+const AUTHORIZED_ACCOUNTS_URL: &str = "https://api.oceanengine.com/open_api/oauth2/advertiser/get/";
+/// 升级版工作台下账户列表（工作台角色展开用）
+const EBP_ACCOUNT_LIST_URL: &str = "https://api.oceanengine.com/open_api/2/ebp/advertiser/list/";
 // 授权页真机校正（2026-10-22，与开发者后台生成的官方授权链接逐字比对）：
 // 域名为 open.oceanengine.com/audit/oauth.html，参数名是 app_id（非 client_id），
 // 不携带 redirect_uri（回调绑定在后台登记的地址）；旧 external/oauth/authorize 已 404，

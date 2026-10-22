@@ -138,7 +138,10 @@ pub async fn pull_ocean_reports(
             to_date: to_date.clone(),
             page: 1,
         };
+        // 开发者级频控（真机 40110）：请求间保持间隔，温和串行
+        tokio::time::sleep(OCEAN_PACE).await;
         total += pull_level(db, client, access_token, base(ACCOUNT_DIMS), false).await?;
+        tokio::time::sleep(OCEAN_PACE).await;
         total += pull_level(db, client, access_token, base(PLAN_DIMS), true).await?;
     }
     Ok(total)
@@ -147,6 +150,9 @@ pub async fn pull_ocean_reports(
 /// 自定义报表维度组合：账户级仅统计日期；计划级加计划 ID 与名称
 const ACCOUNT_DIMS: &[&str] = &["stat_time_day"];
 const PLAN_DIMS: &[&str] = &["stat_time_day", "promotion_id", "promotion_name"];
+
+/// 巨量报表请求节奏（12 账户 × 2 层 ≈ 24 次请求/轮，500ms 间隔留足频控余量）
+const OCEAN_PACE: Duration = Duration::from_millis(500);
 
 /// 拉取单账户单层报表并入库（翻页直到取尽）；失败只记日志并返回已入库行数。
 /// plan_level=false 只入账户行、true 只入计划行（计划行不含点击数，账户行点击以账户级调用为准）
@@ -192,6 +198,7 @@ async fn pull_level(
         if got < crate::ocean::REPORT_PAGE_SIZE || page > 50 {
             return Ok(total);
         }
+        tokio::time::sleep(OCEAN_PACE).await;
         page += 1;
     }
 }
