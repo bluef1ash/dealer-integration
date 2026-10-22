@@ -243,7 +243,8 @@ table {
 .app {
   display: grid;
   grid-template-columns: 216px minmax(0, 1fr);
-  min-height: calc(100vh - 41px);
+  // 锁死为窗口高（titlebar 40px + 1px 边框），内容一律在 .content 内部滚动，窗口本身不出滚动条
+  height: calc(100vh - 41px);
 }
 
 .sidebar {
@@ -468,8 +469,10 @@ body.rail .rail-status {
 // ── 视图工具栏 ──
 .main {
   min-width: 0;
+  min-height: 0;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .topbar {
@@ -536,6 +539,8 @@ body.rail .rail-status {
 
 .content {
   flex: 1;
+  min-height: 0;
+  overflow-y: auto;
   padding: 22px 28px 56px;
 }
 
@@ -1351,6 +1356,15 @@ body.rail .rail-status {
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
+
+  // naive 表单类组件默认 width:100%，在换行布局里会各占一行；收成定宽后多行流式排布
+  .n-select {
+    width: 118px;
+  }
+
+  .n-date-picker {
+    width: 248px;
+  }
 }
 
 .search {
