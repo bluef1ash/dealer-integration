@@ -25,6 +25,14 @@ husky 在每次提交前依次跑 `pnpm typecheck`、`cargo fmt --check`、`carg
 
 注意：`pnpm tauri dev/build` 需要目标平台的系统依赖（Windows: WebView2；macOS: Xcode CLT；Linux: webkit2gtk-4.0/4.1 开发库），不能跨平台交叉编译——各平台在其本机出包。
 
+### 多平台打包（CI）
+
+GitHub Actions（`.github/workflows/release.yml`）在三个平台出安装包：
+
+- 触发：PR 到 main（跨平台编译验证）、手动 workflow_dispatch、推 `v*` tag。
+- 产物：Windows（msi/nsis）、macOS universal dmg（Apple Silicon 与 Intel 通用）、Linux（deb/AppImage）。
+- **tag 触发时版本号跟随 tag**：`scripts/sync-version.mjs` 把 tag 版本写入 package.json / tauri.conf.json / Cargo.toml 后再出包，并创建草稿 Release 供确认发布；PR / 手动触发则从 Actions Artifacts 下载产物，不建 Release。
+
 ## 文档
 
 - [docs/spec/0001](docs/spec/0001-dealer-lead-ad-integration-v1.md)：v1 spec（GitHub issue #1）
