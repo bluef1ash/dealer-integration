@@ -1,7 +1,7 @@
 //! 巨量引擎多应用 command：应用 CRUD、按应用 OAuth 授权、广告账户列表。
 
 use serde::Serialize;
-use tauri::{AppHandle, Emitter, State};
+use tauri::{AppHandle, Emitter, Manager, State, WebviewUrl, WebviewWindowBuilder};
 
 use super::{err_string, Clients};
 use crate::credentials;
@@ -99,10 +99,10 @@ pub async fn start_ocean_auth(
         .map_err(|_| "App ID 必须是数字".to_string())?;
 
     let authorize_link = ocean::authorize_url(ocean_app.app_id.trim());
-    // 留痕实际打开的链接，便于与开发者后台生成的官方授权链接比对排查
-    eprintln!("[OAuth] 打开授权链接: {authorize_link}");
-    open_browser(&authorize_link);
-    let auth_code = wait_auth_code().await.map_err(err_string)?;
+    eprintln!("[OAuth] 打开授权弹窗: {authorize_link}");
+    let auth_code = oauth_popup(&app, ocean_app.id, &authorize_link)
+        .await
+        .map_err(err_string)?;
     let tokens = clients
         .ocean
         .exchange_token(app_id, ocean_app.app_secret.trim(), &auth_code)
@@ -162,70 +162,36 @@ fn json_value_to_string(v: &serde_json::Value) -> String {
     }
 }
 
-fn open_browser(url: &str) {
-    #[cfg(target_os = "windows")]
-    {
-        let _ = std::process::Command::new("cmd")
-            .args(["/C", "start", "", url])
-            .spawn();
+/// 应用内弹窗完成 OAuth：on_navigation 拦截回调导航（127.0.0.1:1720）原生侧提取授权码，
+/// 无需系统浏览器与本机端口监听（浏览器方案的竞态与超时问题一并消除）
+async fn oauth_popup(app: &AppHandle, ocean_row: i64, authorize_link: &str) -> AppResult<String> {
+    let label = format!("oauth-{ocean_row}");
+    if let Some(existing) = app.get_webview_window(&label) {
+        let _ = existing.close();
     }
-    #[cfg(target_os = "macos")]
-    {
-        let _ = std::process::Command::new("open").arg(url).spawn();
-    }
-    #[cfg(all(unix, not(target_os = "macos")))]
-    {
-        let _ = std::process::Command::new("xdg-open").arg(url).spawn();
-    }
-}
-
-/// 本机回环等 OAuth 回调，取回授权码（5 分钟超时）
-async fn wait_auth_code() -> AppResult<String> {
-    use tokio::io::{AsyncReadExt, AsyncWriteExt};
-    let listener = tokio::net::TcpListener::bind(("127.0.0.1", ocean::REDIRECT_PORT))
-        .await
-        .map_err(|e| AppError::Message(format!("回调端口占用: {e}")))?;
-    let (mut stream, _) =
-        tokio::time::timeout(std::time::Duration::from_secs(300), listener.accept())
-            .await
-            .map_err(|_| AppError::Message("等待授权回调超时".into()))??;
-    let mut buf = vec![0u8; 8192];
-    let n = tokio::time::timeout(std::time::Duration::from_secs(5), stream.read(&mut buf))
-        .await
-        .map_err(|_| AppError::Message("读取回调请求超时".into()))??;
-    let request = String::from_utf8_lossy(&buf[..n]);
-    let line = request.lines().next().unwrap_or_default();
-    let query = line.split_whitespace().nth(1).unwrap_or_default();
-    let code = query
-        .split("auth_code=")
-        .nth(1)
-        .unwrap_or_default()
-        .split('&')
-        .next()
-        .unwrap_or_default();
-    if code.is_empty() {
-        return Err(AppError::Message("回调未携带授权码".into()));
-    }
-    let response =
-        "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\n\r\n授权成功，可关闭此页面。";
-    let _ = stream.write_all(response.as_bytes()).await;
-    Ok(percent_decode(code))
-}
-
-fn percent_decode(s: &str) -> String {
-    let bytes = s.as_bytes();
-    let mut out = Vec::new();
-    let mut i = 0;
-    while i < bytes.len() {
-        if bytes[i] == b'%' && i + 2 < bytes.len() {
-            if let Ok(v) = u8::from_str_radix(&s[i + 1..i + 3], 16) {
-                out.push(v);
-                i += 3;
-                continue;
+    let url: tauri::Url = authorize_link
+        .parse()
+        .map_err(|e| AppError::Message(format!("授权链接解析失败: {e}")))?;
+    let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
+    let window = WebviewWindowBuilder::new(app, &label, WebviewUrl::External(url))
+        .title("巨量引擎授权")
+        .inner_size(1024.0, 780.0)
+        .on_navigation(move |nav| {
+            if let Some(code) = ocean::extract_auth_code(nav.as_str()) {
+                // 拦截回调导航：不放行到本机地址，直接取走授权码
+                let _ = tx.send(code);
+                return false;
             }
-        }
-        out.push(bytes[i]);
-        i += 1;
+            true
+        })
+        .build()?;
+    let received = tokio::time::timeout(std::time::Duration::from_secs(600), rx.recv()).await;
+    let _ = window.close();
+    match received {
+        Ok(Some(code)) => Ok(code),
+        Ok(None) => Err(AppError::Message("授权窗口已关闭，未完成授权".into())),
+        Err(_) => Err(AppError::Message(
+            "授权超时（10 分钟），请重新发起授权".into(),
+        )),
     }
-    String::from_utf8_lossy(&out).to_string()
 }

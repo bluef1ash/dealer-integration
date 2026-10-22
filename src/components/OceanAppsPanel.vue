@@ -172,7 +172,7 @@ const accountSummary = computed(() =>
         <n-button :disabled="adding" @click="addApp">{{ adding ? '添加中…' : '添加应用' }}</n-button>
       </div>
       <p class="form-hint">
-        凭证与 token 均存本地 SQLite（跨平台随库迁移）；OAuth 回调本机 127.0.0.1:1720。
+        凭证与 token 均存本地 SQLite（跨平台随库迁移）；授权在应用内弹窗完成。
         Secret 保存后不再回显，需要更换时删除应用重新添加——同一 App ID 重录不影响已授权 token。
       </p>
       <p v-if="hint" class="banner">{{ hint }}</p>

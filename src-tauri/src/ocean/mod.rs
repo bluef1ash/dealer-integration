@@ -16,12 +16,43 @@ const REPORT_URL: &str = "https://ad.oceanengine.com/open_api/2/report/integrate
 // ad.oceanengine.com/openapi/audit/oauth.html 对该应用报「app有误」
 const AUTHORIZE_URL: &str = "https://open.oceanengine.com/audit/oauth.html";
 
-/// 桌面端 OAuth 回调端口（本机回环；回调地址已在开发者后台登记）
-pub const REDIRECT_PORT: u16 = 1720;
-
 /// 拼授权链接（官方授权链接参数：app_id + state；素材授权 material_auth 与追踪 rid 按需可选）
 pub fn authorize_url(app_id: &str) -> String {
     format!("{AUTHORIZE_URL}?app_id={app_id}&state=dealer-integration")
+}
+
+/// 从回调 URL 提取 auth_code（官方回调形如
+/// `http://127.0.0.1:1720/?app_id=…&auth_code=…&scope=[…]&state=&uid=…`）
+pub fn extract_auth_code(callback_url: &str) -> Option<String> {
+    let query = callback_url.split_once('?')?.1;
+    for pair in query.split('&') {
+        if let Some(value) = pair.strip_prefix("auth_code=") {
+            let decoded = percent_decode(value);
+            if !decoded.is_empty() {
+                return Some(decoded);
+            }
+        }
+    }
+    None
+}
+
+/// 百分号解码（scope/编码字符不会进 auth_code，仅兜底）
+fn percent_decode(s: &str) -> String {
+    let bytes = s.as_bytes();
+    let mut out = Vec::new();
+    let mut i = 0;
+    while i < bytes.len() {
+        if bytes[i] == b'%' && i + 2 < bytes.len() {
+            if let Ok(v) = u8::from_str_radix(&s[i + 1..i + 3], 16) {
+                out.push(v);
+                i += 3;
+                continue;
+            }
+        }
+        out.push(bytes[i]);
+        i += 1;
+    }
+    String::from_utf8_lossy(&out).to_string()
 }
 
 pub struct Client {
@@ -207,6 +238,22 @@ mod tests {
         assert_eq!(
             url,
             "https://open.oceanengine.com/audit/oauth.html?app_id=1700000000&state=dealer-integration"
+        );
+    }
+
+    /// 真机回调 URL（2026-10-22 实测）能正确提取 auth_code；scope 编码段不干扰
+    #[test]
+    fn extract_auth_code_from_real_callback() {
+        let callback = "http://127.0.0.1:1720/?app_id=1877930494126810\
+             &auth_code=674f2747c3e4a40c2f3fe505943eb14c432ed4a1\
+             &material_auth_status=0&scope=%5B10000000%2C300000000%5D&state=&uid=3281404888618206";
+        assert_eq!(
+            extract_auth_code(callback).as_deref(),
+            Some("674f2747c3e4a40c2f3fe505943eb14c432ed4a1")
+        );
+        assert_eq!(
+            extract_auth_code("https://open.oceanengine.com/audit/oauth.html?app_id=1"),
+            None
         );
     }
 }
