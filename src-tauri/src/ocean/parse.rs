@@ -32,31 +32,40 @@ pub struct PageInfo {
     pub total_number: i64,
 }
 
-/// 报表行：字段名与层级随 data_level 不同，能取到的才填
+/// 报表行包装：真实响应为 {dimensions, metrics} 嵌套，兼容旧式平铺字段（含脱敏夹具）。
+/// 指标名做多候选映射（v2/v3 文档口径不一致：spend/stat_cost、conversion/convert 等）。
 #[derive(Debug, Deserialize, Default)]
+#[serde(transparent)]
 pub struct ReportItem {
-    #[serde(default)]
-    pub advertiser_id: serde_json::Value,
-    /// 账户层级无计划字段，留空
-    #[serde(default)]
-    pub promotion_id: serde_json::Value,
-    #[serde(default)]
-    pub promotion_name: String,
-    #[serde(default)]
-    pub ad_id: serde_json::Value,
-    #[serde(default)]
-    pub ad_name: String,
-    /// YYYY-MM-DD
-    #[serde(rename = "stat_time_day", default)]
-    pub stat_time_day: String,
-    #[serde(default)]
-    pub spend: serde_json::Value,
-    #[serde(default)]
-    pub impression: serde_json::Value,
-    #[serde(default)]
-    pub click: serde_json::Value,
-    #[serde(default)]
-    pub conversion: serde_json::Value,
+    raw: serde_json::Value,
+}
+
+const NULL: serde_json::Value = serde_json::Value::Null;
+
+impl ReportItem {
+    /// 依次查 dimensions → metrics → 顶层
+    fn get(&self, key: &str) -> &serde_json::Value {
+        self.raw
+            .get("dimensions")
+            .and_then(|d| d.get(key))
+            .or_else(|| self.raw.get("metrics").and_then(|m| m.get(key)))
+            .or_else(|| self.raw.get(key))
+            .unwrap_or(&NULL)
+    }
+
+    /// 多候选键名取首个非空字符串值
+    fn str_field(&self, keys: &[&str]) -> String {
+        for key in keys {
+            let v = self.get(key);
+            if !v.is_null() {
+                let s = as_string(v);
+                if !s.is_empty() && s != "0" {
+                    return s;
+                }
+            }
+        }
+        String::new()
+    }
 }
 
 fn as_string(v: &serde_json::Value) -> String {
@@ -76,45 +85,37 @@ fn as_f64(v: &serde_json::Value) -> f64 {
     as_string(v).parse().unwrap_or(0.0)
 }
 
-/// 计划维度 ID：优先 promotion_id，缺省回落 ad_id（口径随平台联调校正，issue #8）
-fn dimension_id(item: &ReportItem) -> String {
-    let pid = as_string(&item.promotion_id);
-    if !pid.is_empty() && pid != "0" {
-        return pid;
-    }
-    as_string(&item.ad_id)
-}
-
-fn dimension_name(item: &ReportItem) -> String {
-    if !item.promotion_name.is_empty() {
-        item.promotion_name.clone()
-    } else {
-        item.ad_name.clone()
-    }
-}
-
-/// 通用报表明细行 → （账户级日行, 计划级日行）；账户级行无计划维度时计划行为空
+/// 通用报表明细行 → （账户级日行, 计划级日行）；计划维度取不到时计划行为空
 pub fn rows_from_item(item: &ReportItem) -> (Option<AdReportRow>, Option<PlanReportRow>) {
-    let advertiser_id = as_string(&item.advertiser_id);
-    let ad = (!advertiser_id.is_empty()).then(|| AdReportRow {
+    let advertiser_id = item.str_field(&["advertiser_id"]);
+    if advertiser_id.is_empty() {
+        return (None, None);
+    }
+    let date = item.str_field(&["stat_time_day"]);
+    let spend = as_f64(item.get("spend"));
+    let impressions = as_i64(item.get("impression"));
+    let clicks = as_i64(item.get("click"));
+    let conversions = as_i64(item.get("conversion"));
+    let ad = AdReportRow {
         ad_account_id: advertiser_id.clone(),
-        date: item.stat_time_day.clone(),
-        spend: as_f64(&item.spend),
-        impressions: as_i64(&item.impression),
-        clicks: as_i64(&item.click),
-        conversions: as_i64(&item.conversion),
-    });
-    let dim = dimension_id(item);
-    let plan = (!dim.is_empty() && !dim.eq(&advertiser_id)).then(|| PlanReportRow {
+        date: date.clone(),
+        spend,
+        impressions,
+        clicks,
+        conversions,
+    };
+    // 计划维度：优先 promotion_id，缺省回落 ad_id（口径随平台联调校正，issue #8）
+    let dim = item.str_field(&["promotion_id", "ad_id"]);
+    let plan = (!dim.is_empty() && dim != advertiser_id).then(|| PlanReportRow {
         ad_account_id: advertiser_id,
         promotion_id: dim,
-        promotion_name: dimension_name(item),
-        date: item.stat_time_day.clone(),
-        spend: as_f64(&item.spend),
-        conversions: as_i64(&item.conversion),
-        impressions: as_i64(&item.impression),
+        promotion_name: item.str_field(&["promotion_name", "ad_name"]),
+        date,
+        spend,
+        conversions,
+        impressions,
     });
-    (ad, plan)
+    (Some(ad), plan)
 }
 
 pub fn parse_report_response(body: &str) -> AppResult<(Vec<AdReportRow>, Vec<PlanReportRow>)> {
@@ -133,6 +134,17 @@ pub fn parse_report_response(body: &str) -> AppResult<(Vec<AdReportRow>, Vec<Pla
         if let Some(plan) = plan {
             plans.push(plan);
         }
+    }
+    // 有行却全被跳过：字段口径对不上，打出首行原文便于联调校正
+    if !resp.data.list.is_empty() && ads.is_empty() {
+        eprintln!(
+            "[报表] 行字段未识别（首行原文前 300 字）：{}",
+            serde_json::to_string(&resp.data.list[0].raw)
+                .unwrap_or_default()
+                .chars()
+                .take(300)
+                .collect::<String>()
+        );
     }
     Ok((ads, plans))
 }
@@ -197,6 +209,25 @@ mod tests {
         assert_eq!(ads[0].date, "2026-10-19");
         assert_eq!(ads[0].spend, 100.0);
         assert_eq!(ads[0].conversions, 3);
+    }
+
+    /// 真实响应形状：list 行为 {dimensions, metrics} 嵌套，指标为数字
+    #[test]
+    fn dimensions_metrics_shape_parses() {
+        let body = r#"{"code":0,"message":"OK","data":{"list":[
+            {"dimensions":{"stat_time_day":"2026-10-22","advertiser_id":"1700000000",
+                           "promotion_id":"7691306192144973887","promotion_name":"计划甲"},
+             "metrics":{"spend":12.34,"impression":1000,"click":30,"conversion":2}},
+            {"dimensions":{"stat_time_day":"2026-10-22","advertiser_id":"1700000000"},
+             "metrics":{"spend":99.9,"impression":5000,"click":120,"conversion":4}}
+        ],"page_info":{"page":1,"total_number":2}}}"#;
+        let (ads, plans) = parse_report_response(body).unwrap();
+        // 嵌套形状下账户行由计划行派生（口径同平面形状），账户行 2 条、计划行 1 条
+        assert_eq!(ads.len(), 2);
+        assert_eq!(plans.len(), 1);
+        assert_eq!(plans[0].promotion_name, "计划甲");
+        assert_eq!(plans[0].spend, 12.34);
+        assert_eq!(ads[1].conversions, 4);
     }
 
     /// 计划层级样例 → 账户行 + 计划行

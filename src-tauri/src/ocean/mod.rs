@@ -9,7 +9,6 @@ use crate::error::{AppError, AppResult};
 use crate::models::{AdReportRow, PlanReportRow};
 
 const TOKEN_URL: &str = "https://ad.oceanengine.com/open_api/oauth2/access_token/";
-const REPORT_URL: &str = "https://ad.oceanengine.com/open_api/2/report/integrated/get/";
 // 授权页真机校正（2026-10-22，与开发者后台生成的官方授权链接逐字比对）：
 // 域名为 open.oceanengine.com/audit/oauth.html，参数名是 app_id（非 client_id），
 // 不携带 redirect_uri（回调绑定在后台登记的地址）；旧 external/oauth/authorize 已 404，
@@ -110,7 +109,7 @@ impl Client {
         parse::parse_token_response(&text)
     }
 
-    /// 拉取一页报表（data_level：账户=ADVERTISER_AD_DAY，计划=AD_AD_DAY）
+    /// 拉取一页报表（v3.0 多合一预置报表：data_level 进路径，GET + 查询参数，真机校正 2026-10-22）
     pub async fn fetch_report(&self, access_token: &str, query: &ReportQuery) -> AppResult<String> {
         #[derive(Deserialize)]
         struct Envelope {
@@ -121,29 +120,35 @@ impl Client {
             #[serde(default)]
             data: serde_json::Value,
         }
-        let body = serde_json::json!({
-            "data_level": query.data_level,
-            "start_date": query.from_date,
-            "end_date": query.to_date,
-            "fields": ["advertiser_id", "promotion_id", "promotion_name", "ad_id", "ad_name",
-                       "stat_time_day", "spend", "impression", "click", "conversion"],
-            "filter": { "advertiser_ids": query.advertiser_ids },
-            "page": query.page,
-            "page_size": 200,
-        });
+        let url = format!(
+            "https://ad.oceanengine.com/open_api/v3.0/{data_level}/report/integrated/get/",
+            data_level = query.data_level
+        );
+        let filter = serde_json::json!({ "advertiser_ids": query.advertiser_ids }).to_string();
+        let params = [
+            ("start_date", query.from_date.clone()),
+            ("end_date", query.to_date.clone()),
+            ("page", query.page.to_string()),
+            ("page_size", "200".to_string()),
+            ("filter", filter),
+        ];
         let text = self
             .http
-            .post(REPORT_URL)
+            .get(url)
             .header("Access-Token", access_token)
-            .json(&body)
+            .query(&params)
             .send()
             .await?
             .error_for_status()?
             .text()
             .await?;
-        // 帧校验提前到客户端层，解析由 parse 模块负责
-        let env: Envelope = serde_json::from_str(&text)
-            .map_err(|e| AppError::Message(format!("报表响应解析失败: {e}")))?;
+        // 帧校验提前到客户端层，解析由 parse 模块负责；解析失败带原文片段便于联调
+        let env: Envelope = serde_json::from_str(&text).map_err(|e| {
+            AppError::Message(format!(
+                "报表响应解析失败: {e}（原文前 300 字：{}）",
+                text.chars().take(300).collect::<String>()
+            ))
+        })?;
         if env.code != 0 {
             return Err(AppError::remote(env.code, &env.message));
         }

@@ -128,7 +128,9 @@ pub async fn pull_ocean_reports(
         return Ok(0);
     }
     let mut total = 0usize;
-    for level in ["ADVERTISER_AD_DAY", "AD_AD_DAY"] {
+    // v3.0 预置报表「广告主×广告×天」的维度同时含账户与计划，一次拉取即出两类行；
+    // 层级失败只记日志不中断（其他层级/下轮调度仍可补数据）
+    for level in ["ADVERTISER_AD_DAY"] {
         let mut page = 1i64;
         loop {
             let query = crate::ocean::ReportQuery {
@@ -138,7 +140,13 @@ pub async fn pull_ocean_reports(
                 advertiser_ids: advertiser_ids.clone(),
                 page,
             };
-            let data = client.fetch_report(access_token, &query).await?;
+            let data = match client.fetch_report(access_token, &query).await {
+                Ok(data) => data,
+                Err(e) => {
+                    eprintln!("[调度] 报表层级 {level} 拉取失败: {e}");
+                    break;
+                }
+            };
             let (ads, plans) = crate::ocean::parse::parse_report_response(&data)?;
             let batch = ads.len() + plans.len();
             total += db.with(|conn| crate::ocean::ingest_reports(conn, &ads, &plans))?;
