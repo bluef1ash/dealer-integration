@@ -1,0 +1,2067 @@
+{
+  "prompts": "",
+  "status": 0,
+  "message": "success",
+  "data": {
+    "list": [
+      {
+        "instance_id": "131",
+        "leads_id": "1115047139",
+        "account_info": {
+          "key": "0001_190696",
+          "label": "",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "customer_id": "0",
+        "name": "未命名",
+        "phone": "13800001001",
+        "city_info": {
+          "key": "21",
+          "label": "辽宁",
+          "is_default": false,
+          "children": [
+            {
+              "key": "210300",
+              "label": "鞍山",
+              "is_default": false,
+              "type": 0,
+              "field": ""
+            }
+          ],
+          "type": 0,
+          "field": ""
+        },
+        "phone_city": {
+          "key": "13800001001",
+          "label": "鞍山",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "status": {
+          "key": "1",
+          "label": "未联系",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "source_category": {
+          "key": "5",
+          "label": "私聊线索",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "product_type": {
+          "key": "11",
+          "label": "抖音-企业号",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "sub_product_type": {
+          "key": "11001",
+          "label": "自然经营线索",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "feiyu_action_type": {
+          "key": "4",
+          "label": "私信",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "from_scene": {
+          "key": "2",
+          "label": "直播",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "from_sub_scene": {
+          "key": "4",
+          "label": "直播进私留资",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "followup_dealer": {
+          "key": "0001_190696",
+          "label": "示例公司12",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "intention_series": {
+          "key": "10040",
+          "label": "iCAR超级V23",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "intention_car": {
+          "key": "240517",
+          "label": "401两驱进阶版",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "intention_car_year": 2025,
+        "from_shop_info": {
+          "key": "164756",
+          "label": "示例公司11",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "tags": [
+          {
+            "tag_id": "100021",
+            "tag_name": "高价值",
+            "display_config": {
+              "bg_color": "#E6300B",
+              "text_color": "#FFFFFF"
+            },
+            "tag_desc": "",
+            "tag_type": -1,
+            "priority": 0,
+            "extra": "",
+            "tag_category": 0,
+            "created_time": 0,
+            "updated_time": 0
+          },
+          {
+            "tag_id": "425",
+            "tag_name": "异地流入",
+            "display_config": {
+              "bg_color": "#3370ff1A",
+              "text_color": "#3370ffFF"
+            },
+            "tag_desc": "",
+            "tag_type": 0,
+            "priority": 3,
+            "extra": "",
+            "tag_category": 0,
+            "created_time": 1729603534,
+            "updated_time": 1730120956
+          },
+          {
+            "tag_id": "426",
+            "tag_name": "多次留资",
+            "display_config": {
+              "bg_color": "#B37D121A",
+              "text_color": "#B37D12FF"
+            },
+            "tag_desc": "",
+            "tag_type": 0,
+            "priority": 4,
+            "extra": "",
+            "tag_category": 0,
+            "created_time": 1729603534,
+            "updated_time": 1730120956
+          }
+        ],
+        "is_new": {
+          "key": "1",
+          "label": "未联系新线索",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "manufacturer_push_id": "1350171355",
+        "feiyu_leads_id": "7696340964679352339",
+        "need_show_interaction_record": true,
+        "virtual_number_type": 0,
+        "new_product_type": {
+          "key": "1",
+          "label": "抖音线索",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "leads_time": 1791943715,
+        "create_time": 1791943715,
+        "ctrl_group": {},
+        "extra": {
+          "dy_customer_id": "7000000000000003",
+          "dy_customer_name": "测试用户2",
+          "dy_customer_avatar": "",
+          "im_conversation_id": "7000000000000004",
+          "origin_dy_customer_uid": "2795430487268762",
+          "origin_dy_customer_name": "示例抖音号8",
+          "follow_dealer_dy_uid": "7000000000000005",
+          "follow_dealer_dy_name": "示例抖音号6",
+          "follow_dealer_name": "示例公司12",
+          "follow_dealer_id": "190696",
+          "source_dealer_dy_uid": "7000000000000007",
+          "source_dealer_dy_name": "示例抖音号8",
+          "source_dealer_name": "示例公司11",
+          "source_dealer_id": "164756",
+          "origin_dy_customer_uniq_id": "7000000000000009",
+          "follow_dealer_dy_uniq_id": "7000000000000010",
+          "source_dealer_dy_uniq_id": "7000000000000009",
+          "feiyu_convert_status": {
+            "key": "5",
+            "label": "外部流量",
+            "is_default": false,
+            "type": 0,
+            "field": ""
+          },
+          "source_account_type": {
+            "key": "3",
+            "label": "企业主账号",
+            "is_default": false,
+            "type": 0,
+            "field": ""
+          }
+        }
+      },
+      {
+        "instance_id": "131",
+        "leads_id": "1109298389",
+        "account_info": {
+          "key": "0001_218623",
+          "label": "",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "customer_id": "0",
+        "name": "未命名",
+        "phone": "13800001013",
+        "city_info": {
+          "key": "42",
+          "label": "湖北",
+          "is_default": false,
+          "children": [
+            {
+              "key": "420900",
+              "label": "孝感",
+              "is_default": false,
+              "type": 0,
+              "field": ""
+            }
+          ],
+          "type": 0,
+          "field": ""
+        },
+        "phone_city": {
+          "key": "13800001013",
+          "label": "大连",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "status": {
+          "key": "1",
+          "label": "未联系",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "source_category": {
+          "key": "5",
+          "label": "私聊线索",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "product_type": {
+          "key": "11",
+          "label": "抖音-企业号",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "sub_product_type": {
+          "key": "11002",
+          "label": "广告直接线索",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "feiyu_action_type": {
+          "key": "4",
+          "label": "私信",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "from_scene": {
+          "key": "1",
+          "label": "短视频",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "from_sub_scene": {
+          "key": "2",
+          "label": "短视频进私留资",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "followup_dealer": {
+          "key": "0001_218623",
+          "label": "示例公司20",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "intention_series": {
+          "key": "10040",
+          "label": "iCAR超级V23",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "intention_car": {
+          "key": "240517",
+          "label": "401两驱进阶版",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "intention_car_year": 2025,
+        "from_shop_info": {
+          "key": "164756",
+          "label": "示例公司11",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "tags": [
+          {
+            "tag_id": "100021",
+            "tag_name": "高价值",
+            "display_config": {
+              "bg_color": "#E6300B",
+              "text_color": "#FFFFFF"
+            },
+            "tag_desc": "",
+            "tag_type": -1,
+            "priority": 0,
+            "extra": "",
+            "tag_category": 0,
+            "created_time": 0,
+            "updated_time": 0
+          },
+          {
+            "tag_id": "425",
+            "tag_name": "异地流入",
+            "display_config": {
+              "bg_color": "#3370ff1A",
+              "text_color": "#3370ffFF"
+            },
+            "tag_desc": "",
+            "tag_type": 0,
+            "priority": 3,
+            "extra": "",
+            "tag_category": 0,
+            "created_time": 1729603534,
+            "updated_time": 1730120956
+          }
+        ],
+        "is_new": {
+          "key": "1",
+          "label": "未联系新线索",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "manufacturer_push_id": "1344040354",
+        "feiyu_leads_id": "7694115782602522639",
+        "need_show_interaction_record": true,
+        "virtual_number_type": 0,
+        "new_product_type": {
+          "key": "1",
+          "label": "抖音线索",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "leads_time": 1791425915,
+        "create_time": 1791425915,
+        "ctrl_group": {},
+        "extra": {
+          "ad_id": "1877762578618523",
+          "ad_owner_id": "1847489220752523",
+          "dy_customer_id": "7000000000000015",
+          "dy_customer_name": "测试用户14",
+          "dy_customer_avatar": "",
+          "im_conversation_id": "7000000000000016",
+          "origin_dy_customer_uid": "2795430487268762",
+          "origin_dy_customer_name": "示例抖音号8",
+          "ad_owner_name": "示例公司21",
+          "follow_dealer_dy_uid": "7000000000000017",
+          "follow_dealer_dy_name": "示例抖音号18",
+          "follow_dealer_name": "示例公司20",
+          "follow_dealer_id": "218623",
+          "source_dealer_dy_uid": "7000000000000007",
+          "source_dealer_dy_name": "示例抖音号8",
+          "source_dealer_name": "示例公司11",
+          "source_dealer_id": "164756",
+          "promotion_id": "7691306192144973887",
+          "promotion_name": "示例抖音号22",
+          "origin_dy_customer_uniq_id": "7000000000000009",
+          "follow_dealer_dy_uniq_id": "7000000000000019",
+          "source_dealer_dy_uniq_id": "7000000000000009",
+          "feiyu_convert_status": {
+            "key": "1",
+            "label": "合法转化",
+            "is_default": false,
+            "type": 0,
+            "field": ""
+          },
+          "source_account_type": {
+            "key": "3",
+            "label": "企业主账号",
+            "is_default": false,
+            "type": 0,
+            "field": ""
+          }
+        }
+      },
+      {
+        "instance_id": "131",
+        "leads_id": "1107564989",
+        "account_info": {
+          "key": "0001_190696",
+          "label": "",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "customer_id": "0",
+        "name": "未命名",
+        "phone": "13800001023",
+        "city_info": {
+          "key": "21",
+          "label": "辽宁",
+          "is_default": false,
+          "children": [
+            {
+              "key": "210300",
+              "label": "鞍山",
+              "is_default": false,
+              "type": 0,
+              "field": ""
+            }
+          ],
+          "type": 0,
+          "field": ""
+        },
+        "phone_city": {
+          "key": "13800001023",
+          "label": "鞍山",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "status": {
+          "key": "1",
+          "label": "未联系",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "source_category": {
+          "key": "5",
+          "label": "私聊线索",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "product_type": {
+          "key": "11",
+          "label": "抖音-企业号",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "sub_product_type": {
+          "key": "11001",
+          "label": "自然经营线索",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "feiyu_action_type": {
+          "key": "4",
+          "label": "私信",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "from_scene": {
+          "key": "2",
+          "label": "直播",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "from_sub_scene": {
+          "key": "4",
+          "label": "直播进私留资",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "followup_dealer": {
+          "key": "0001_190696",
+          "label": "示例公司12",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "intention_series": {
+          "key": "10040",
+          "label": "iCAR超级V23",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "intention_car": {
+          "key": "240517",
+          "label": "401两驱进阶版",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "intention_car_year": 2025,
+        "from_shop_info": {
+          "key": "164756",
+          "label": "示例公司11",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "tags": [
+          {
+            "tag_id": "100021",
+            "tag_name": "高价值",
+            "display_config": {
+              "bg_color": "#E6300B",
+              "text_color": "#FFFFFF"
+            },
+            "tag_desc": "",
+            "tag_type": -1,
+            "priority": 0,
+            "extra": "",
+            "tag_category": 0,
+            "created_time": 0,
+            "updated_time": 0
+          },
+          {
+            "tag_id": "425",
+            "tag_name": "异地流入",
+            "display_config": {
+              "bg_color": "#3370ff1A",
+              "text_color": "#3370ffFF"
+            },
+            "tag_desc": "",
+            "tag_type": 0,
+            "priority": 3,
+            "extra": "",
+            "tag_category": 0,
+            "created_time": 1729603534,
+            "updated_time": 1730120956
+          }
+        ],
+        "is_new": {
+          "key": "1",
+          "label": "未联系新线索",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "manufacturer_push_id": "1342187945",
+        "feiyu_leads_id": "7693440350983028779",
+        "need_show_interaction_record": true,
+        "virtual_number_type": 0,
+        "new_product_type": {
+          "key": "1",
+          "label": "抖音线索",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "leads_time": 1791268364,
+        "create_time": 1791268364,
+        "ctrl_group": {},
+        "extra": {
+          "dy_customer_id": "7000000000000025",
+          "dy_customer_name": "测试用户24",
+          "dy_customer_avatar": "",
+          "im_conversation_id": "7000000000000026",
+          "origin_dy_customer_uid": "2795430487268762",
+          "origin_dy_customer_name": "示例抖音号8",
+          "follow_dealer_dy_uid": "7000000000000005",
+          "follow_dealer_dy_name": "示例抖音号6",
+          "follow_dealer_name": "示例公司12",
+          "follow_dealer_id": "190696",
+          "source_dealer_dy_uid": "7000000000000007",
+          "source_dealer_dy_name": "示例抖音号8",
+          "source_dealer_name": "示例公司11",
+          "source_dealer_id": "164756",
+          "origin_dy_customer_uniq_id": "7000000000000009",
+          "follow_dealer_dy_uniq_id": "7000000000000010",
+          "source_dealer_dy_uniq_id": "7000000000000009",
+          "feiyu_convert_status": {
+            "key": "5",
+            "label": "外部流量",
+            "is_default": false,
+            "type": 0,
+            "field": ""
+          },
+          "source_account_type": {
+            "key": "3",
+            "label": "企业主账号",
+            "is_default": false,
+            "type": 0,
+            "field": ""
+          }
+        }
+      },
+      {
+        "instance_id": "131",
+        "leads_id": "1107526487",
+        "account_info": {
+          "key": "0001_115567",
+          "label": "",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "customer_id": "0",
+        "name": "未命名",
+        "phone": "13800001027",
+        "city_info": {
+          "key": "37",
+          "label": "山东",
+          "is_default": false,
+          "children": [
+            {
+              "key": "371400",
+              "label": "德州",
+              "is_default": false,
+              "type": 0,
+              "field": ""
+            }
+          ],
+          "type": 0,
+          "field": ""
+        },
+        "phone_city": {
+          "key": "13800001027",
+          "label": "德州",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "status": {
+          "key": "1",
+          "label": "未联系",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "source_category": {
+          "key": "5",
+          "label": "私聊线索",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "product_type": {
+          "key": "11",
+          "label": "抖音-企业号",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "sub_product_type": {
+          "key": "11001",
+          "label": "自然经营线索",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "feiyu_action_type": {
+          "key": "4",
+          "label": "私信",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "from_scene": {
+          "key": "2",
+          "label": "直播",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "from_sub_scene": {
+          "key": "4",
+          "label": "直播进私留资",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "followup_dealer": {
+          "key": "0001_115567",
+          "label": "示例公司34",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "intention_series": {
+          "key": "10040",
+          "label": "iCAR超级V23",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "intention_car": {
+          "key": "240517",
+          "label": "401两驱进阶版",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "intention_car_year": 2025,
+        "from_shop_info": {
+          "key": "164756",
+          "label": "示例公司11",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "tags": [
+          {
+            "tag_id": "100021",
+            "tag_name": "高价值",
+            "display_config": {
+              "bg_color": "#E6300B",
+              "text_color": "#FFFFFF"
+            },
+            "tag_desc": "",
+            "tag_type": -1,
+            "priority": 0,
+            "extra": "",
+            "tag_category": 0,
+            "created_time": 0,
+            "updated_time": 0
+          },
+          {
+            "tag_id": "425",
+            "tag_name": "异地流入",
+            "display_config": {
+              "bg_color": "#3370ff1A",
+              "text_color": "#3370ffFF"
+            },
+            "tag_desc": "",
+            "tag_type": 0,
+            "priority": 3,
+            "extra": "",
+            "tag_category": 0,
+            "created_time": 1729603534,
+            "updated_time": 1730120956
+          }
+        ],
+        "is_new": {
+          "key": "1",
+          "label": "未联系新线索",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "manufacturer_push_id": "1342147250",
+        "feiyu_leads_id": "7693430796295602202",
+        "need_show_interaction_record": true,
+        "virtual_number_type": 0,
+        "new_product_type": {
+          "key": "1",
+          "label": "抖音线索",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "leads_time": 1791266138,
+        "create_time": 1791266138,
+        "ctrl_group": {},
+        "extra": {
+          "dy_customer_id": "7000000000000029",
+          "dy_customer_name": "测试用户28",
+          "dy_customer_avatar": "",
+          "im_conversation_id": "7000000000000030",
+          "origin_dy_customer_uid": "2795430487268762",
+          "origin_dy_customer_name": "示例抖音号8",
+          "follow_dealer_dy_uid": "7000000000000031",
+          "follow_dealer_dy_name": "示例抖音号32",
+          "follow_dealer_name": "示例公司34",
+          "follow_dealer_id": "115567",
+          "source_dealer_dy_uid": "7000000000000007",
+          "source_dealer_dy_name": "示例抖音号8",
+          "source_dealer_name": "示例公司11",
+          "source_dealer_id": "164756",
+          "origin_dy_customer_uniq_id": "7000000000000009",
+          "follow_dealer_dy_uniq_id": "7000000000000033",
+          "source_dealer_dy_uniq_id": "7000000000000009",
+          "feiyu_convert_status": {
+            "key": "5",
+            "label": "外部流量",
+            "is_default": false,
+            "type": 0,
+            "field": ""
+          },
+          "source_account_type": {
+            "key": "3",
+            "label": "企业主账号",
+            "is_default": false,
+            "type": 0,
+            "field": ""
+          }
+        }
+      },
+      {
+        "instance_id": "131",
+        "leads_id": "1107319013",
+        "account_info": {
+          "key": "0001_209320",
+          "label": "",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "customer_id": "0",
+        "name": "未命名",
+        "phone": "13800001035",
+        "city_info": {
+          "key": "22",
+          "label": "吉林",
+          "is_default": false,
+          "children": [
+            {
+              "key": "220100",
+              "label": "长春",
+              "is_default": false,
+              "type": 0,
+              "field": ""
+            }
+          ],
+          "type": 0,
+          "field": ""
+        },
+        "phone_city": {
+          "key": "13800001035",
+          "label": "乌鲁木齐",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "status": {
+          "key": "1",
+          "label": "未联系",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "source_category": {
+          "key": "5",
+          "label": "私聊线索",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "product_type": {
+          "key": "11",
+          "label": "抖音-企业号",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "sub_product_type": {
+          "key": "11002",
+          "label": "广告直接线索",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "feiyu_action_type": {
+          "key": "4",
+          "label": "私信",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "from_scene": {
+          "key": "2",
+          "label": "直播",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "from_sub_scene": {
+          "key": "4",
+          "label": "直播进私留资",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "followup_dealer": {
+          "key": "0001_209320",
+          "label": "示例公司42",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "intention_series": {
+          "key": "10040",
+          "label": "iCAR超级V23",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "intention_car": {
+          "key": "240517",
+          "label": "401两驱进阶版",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "intention_car_year": 2025,
+        "from_shop_info": {
+          "key": "164756",
+          "label": "示例公司11",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "tags": [
+          {
+            "tag_id": "100021",
+            "tag_name": "高价值",
+            "display_config": {
+              "bg_color": "#E6300B",
+              "text_color": "#FFFFFF"
+            },
+            "tag_desc": "",
+            "tag_type": -1,
+            "priority": 0,
+            "extra": "",
+            "tag_category": 0,
+            "created_time": 0,
+            "updated_time": 0
+          },
+          {
+            "tag_id": "425",
+            "tag_name": "异地流入",
+            "display_config": {
+              "bg_color": "#3370ff1A",
+              "text_color": "#3370ffFF"
+            },
+            "tag_desc": "",
+            "tag_type": 0,
+            "priority": 3,
+            "extra": "",
+            "tag_category": 0,
+            "created_time": 1729603534,
+            "updated_time": 1730120956
+          }
+        ],
+        "is_new": {
+          "key": "1",
+          "label": "未联系新线索",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "manufacturer_push_id": "1341928193",
+        "feiyu_leads_id": "7693376288655933483",
+        "need_show_interaction_record": true,
+        "virtual_number_type": 0,
+        "new_product_type": {
+          "key": "1",
+          "label": "抖音线索",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "leads_time": 1791253733,
+        "create_time": 1791253733,
+        "ctrl_group": {},
+        "extra": {
+          "ad_id": "1877761748668824",
+          "ad_owner_id": "1847489220752523",
+          "dy_customer_id": "7000000000000037",
+          "dy_customer_name": "测试用户36",
+          "dy_customer_avatar": "",
+          "im_conversation_id": "7000000000000038",
+          "origin_dy_customer_uid": "2795430487268762",
+          "origin_dy_customer_name": "示例抖音号8",
+          "ad_owner_name": "示例公司21",
+          "follow_dealer_dy_uid": "7000000000000039",
+          "follow_dealer_dy_name": "示例抖音号40",
+          "follow_dealer_name": "示例公司42",
+          "follow_dealer_id": "209320",
+          "source_dealer_dy_uid": "7000000000000007",
+          "source_dealer_dy_name": "示例抖音号8",
+          "source_dealer_name": "示例公司11",
+          "source_dealer_id": "164756",
+          "promotion_id": "7691305845308538921",
+          "promotion_name": "示例抖音号43",
+          "origin_dy_customer_uniq_id": "7000000000000009",
+          "follow_dealer_dy_uniq_id": "7000000000000041",
+          "source_dealer_dy_uniq_id": "7000000000000009",
+          "feiyu_convert_status": {
+            "key": "1",
+            "label": "合法转化",
+            "is_default": false,
+            "type": 0,
+            "field": ""
+          },
+          "source_account_type": {
+            "key": "3",
+            "label": "企业主账号",
+            "is_default": false,
+            "type": 0,
+            "field": ""
+          }
+        }
+      },
+      {
+        "instance_id": "131",
+        "leads_id": "1106318398",
+        "account_info": {
+          "key": "0001_209320",
+          "label": "",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "customer_id": "0",
+        "name": "未命名",
+        "phone": "13800001044",
+        "city_info": {
+          "key": "22",
+          "label": "吉林",
+          "is_default": false,
+          "children": [
+            {
+              "key": "220200",
+              "label": "吉林",
+              "is_default": false,
+              "type": 0,
+              "field": ""
+            }
+          ],
+          "type": 0,
+          "field": ""
+        },
+        "phone_city": {
+          "key": "13800001044",
+          "label": "吉林",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "status": {
+          "key": "1",
+          "label": "未联系",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "source_category": {
+          "key": "5",
+          "label": "私聊线索",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "product_type": {
+          "key": "11",
+          "label": "抖音-企业号",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "sub_product_type": {
+          "key": "11002",
+          "label": "广告直接线索",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "feiyu_action_type": {
+          "key": "4",
+          "label": "私信",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "from_scene": {
+          "key": "2",
+          "label": "直播",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "from_sub_scene": {
+          "key": "4",
+          "label": "直播进私留资",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "followup_dealer": {
+          "key": "0001_209320",
+          "label": "示例公司42",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "intention_series": {
+          "key": "10040",
+          "label": "iCAR超级V23",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "intention_car": {
+          "key": "240517",
+          "label": "401两驱进阶版",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "intention_car_year": 2025,
+        "from_shop_info": {
+          "key": "164756",
+          "label": "示例公司11",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "tags": [
+          {
+            "tag_id": "100021",
+            "tag_name": "高价值",
+            "display_config": {
+              "bg_color": "#E6300B",
+              "text_color": "#FFFFFF"
+            },
+            "tag_desc": "",
+            "tag_type": -1,
+            "priority": 0,
+            "extra": "",
+            "tag_category": 0,
+            "created_time": 0,
+            "updated_time": 0
+          },
+          {
+            "tag_id": "425",
+            "tag_name": "异地流入",
+            "display_config": {
+              "bg_color": "#3370ff1A",
+              "text_color": "#3370ffFF"
+            },
+            "tag_desc": "",
+            "tag_type": 0,
+            "priority": 3,
+            "extra": "",
+            "tag_category": 0,
+            "created_time": 1729603534,
+            "updated_time": 1730120956
+          }
+        ],
+        "is_new": {
+          "key": "1",
+          "label": "未联系新线索",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "manufacturer_push_id": "1340862288",
+        "feiyu_leads_id": "7693005598677270555",
+        "need_show_interaction_record": true,
+        "virtual_number_type": 0,
+        "new_product_type": {
+          "key": "1",
+          "label": "抖音线索",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "leads_time": 1791167431,
+        "create_time": 1791167431,
+        "ctrl_group": {},
+        "extra": {
+          "ad_id": "1877762578618523",
+          "ad_owner_id": "1847489220752523",
+          "dy_customer_id": "7000000000000046",
+          "dy_customer_name": "测试用户45",
+          "dy_customer_avatar": "",
+          "im_conversation_id": "7000000000000047",
+          "origin_dy_customer_uid": "2795430487268762",
+          "origin_dy_customer_name": "示例抖音号8",
+          "ad_owner_name": "示例公司21",
+          "follow_dealer_dy_uid": "7000000000000039",
+          "follow_dealer_dy_name": "示例抖音号40",
+          "follow_dealer_name": "示例公司42",
+          "follow_dealer_id": "209320",
+          "source_dealer_dy_uid": "7000000000000007",
+          "source_dealer_dy_name": "示例抖音号8",
+          "source_dealer_name": "示例公司11",
+          "source_dealer_id": "164756",
+          "promotion_id": "7691306192144973887",
+          "promotion_name": "示例抖音号22",
+          "origin_dy_customer_uniq_id": "7000000000000009",
+          "follow_dealer_dy_uniq_id": "7000000000000041",
+          "source_dealer_dy_uniq_id": "7000000000000009",
+          "feiyu_convert_status": {
+            "key": "1",
+            "label": "合法转化",
+            "is_default": false,
+            "type": 0,
+            "field": ""
+          },
+          "source_account_type": {
+            "key": "3",
+            "label": "企业主账号",
+            "is_default": false,
+            "type": 0,
+            "field": ""
+          }
+        }
+      },
+      {
+        "instance_id": "131",
+        "leads_id": "1106297153",
+        "account_info": {
+          "key": "0001_190696",
+          "label": "",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "customer_id": "0",
+        "name": "未命名",
+        "phone": "13800001048",
+        "city_info": {
+          "key": "21",
+          "label": "辽宁",
+          "is_default": false,
+          "children": [
+            {
+              "key": "210300",
+              "label": "鞍山",
+              "is_default": false,
+              "type": 0,
+              "field": ""
+            }
+          ],
+          "type": 0,
+          "field": ""
+        },
+        "phone_city": {
+          "key": "13800001048",
+          "label": "大连",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "status": {
+          "key": "1",
+          "label": "未联系",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "source_category": {
+          "key": "5",
+          "label": "私聊线索",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "product_type": {
+          "key": "11",
+          "label": "抖音-企业号",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "sub_product_type": {
+          "key": "11002",
+          "label": "广告直接线索",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "feiyu_action_type": {
+          "key": "4",
+          "label": "私信",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "from_scene": {
+          "key": "1",
+          "label": "短视频",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "from_sub_scene": {
+          "key": "2",
+          "label": "短视频进私留资",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "followup_dealer": {
+          "key": "0001_190696",
+          "label": "示例公司12",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "intention_series": {
+          "key": "10040",
+          "label": "iCAR超级V23",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "intention_car": {
+          "key": "240517",
+          "label": "401两驱进阶版",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "intention_car_year": 2025,
+        "from_shop_info": {
+          "key": "164756",
+          "label": "示例公司11",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "tags": [
+          {
+            "tag_id": "100021",
+            "tag_name": "高价值",
+            "display_config": {
+              "bg_color": "#E6300B",
+              "text_color": "#FFFFFF"
+            },
+            "tag_desc": "",
+            "tag_type": -1,
+            "priority": 0,
+            "extra": "",
+            "tag_category": 0,
+            "created_time": 0,
+            "updated_time": 0
+          },
+          {
+            "tag_id": "425",
+            "tag_name": "异地流入",
+            "display_config": {
+              "bg_color": "#3370ff1A",
+              "text_color": "#3370ffFF"
+            },
+            "tag_desc": "",
+            "tag_type": 0,
+            "priority": 3,
+            "extra": "",
+            "tag_category": 0,
+            "created_time": 1729603534,
+            "updated_time": 1730120956
+          }
+        ],
+        "is_new": {
+          "key": "1",
+          "label": "未联系新线索",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "manufacturer_push_id": "1340839522",
+        "feiyu_leads_id": "7693001052605546559",
+        "need_show_interaction_record": true,
+        "virtual_number_type": 0,
+        "new_product_type": {
+          "key": "1",
+          "label": "抖音线索",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "leads_time": 1791166363,
+        "create_time": 1791166363,
+        "ctrl_group": {},
+        "extra": {
+          "ad_id": "1877762578618523",
+          "ad_owner_id": "1847489220752523",
+          "dy_customer_id": "7000000000000050",
+          "dy_customer_name": "测试用户49",
+          "dy_customer_avatar": "",
+          "im_conversation_id": "7000000000000051",
+          "origin_dy_customer_uid": "2795430487268762",
+          "origin_dy_customer_name": "示例抖音号8",
+          "ad_owner_name": "示例公司21",
+          "follow_dealer_dy_uid": "7000000000000005",
+          "follow_dealer_dy_name": "示例抖音号6",
+          "follow_dealer_name": "示例公司12",
+          "follow_dealer_id": "190696",
+          "source_dealer_dy_uid": "7000000000000007",
+          "source_dealer_dy_name": "示例抖音号8",
+          "source_dealer_name": "示例公司11",
+          "source_dealer_id": "164756",
+          "promotion_id": "7691306192144973887",
+          "promotion_name": "示例抖音号22",
+          "origin_dy_customer_uniq_id": "7000000000000009",
+          "follow_dealer_dy_uniq_id": "7000000000000010",
+          "source_dealer_dy_uniq_id": "7000000000000009",
+          "feiyu_convert_status": {
+            "key": "1",
+            "label": "合法转化",
+            "is_default": false,
+            "type": 0,
+            "field": ""
+          },
+          "source_account_type": {
+            "key": "3",
+            "label": "企业主账号",
+            "is_default": false,
+            "type": 0,
+            "field": ""
+          }
+        }
+      },
+      {
+        "instance_id": "131",
+        "leads_id": "1102228771",
+        "account_info": {
+          "key": "0001_172696",
+          "label": "",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "customer_id": "0",
+        "name": "未命名",
+        "phone": "13800001052",
+        "city_info": {
+          "key": "22",
+          "label": "吉林",
+          "is_default": false,
+          "children": [
+            {
+              "key": "220200",
+              "label": "吉林",
+              "is_default": false,
+              "type": 0,
+              "field": ""
+            }
+          ],
+          "type": 0,
+          "field": ""
+        },
+        "phone_city": {
+          "key": "13800001052",
+          "label": "吉林",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "status": {
+          "key": "1",
+          "label": "未联系",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "source_category": {
+          "key": "5",
+          "label": "私聊线索",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "product_type": {
+          "key": "11",
+          "label": "抖音-企业号",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "sub_product_type": {
+          "key": "11001",
+          "label": "自然经营线索",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "feiyu_action_type": {
+          "key": "4",
+          "label": "私信",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "from_scene": {
+          "key": "1",
+          "label": "短视频",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "from_sub_scene": {
+          "key": "2",
+          "label": "短视频进私留资",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "followup_dealer": {
+          "key": "0001_172696",
+          "label": "示例公司42",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "intention_series": {
+          "key": "10040",
+          "label": "iCAR超级V23",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "intention_car": {
+          "key": "240517",
+          "label": "401两驱进阶版",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "intention_car_year": 2025,
+        "from_shop_info": {
+          "key": "164756",
+          "label": "示例公司11",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "tags": [
+          {
+            "tag_id": "100021",
+            "tag_name": "高价值",
+            "display_config": {
+              "bg_color": "#E6300B",
+              "text_color": "#FFFFFF"
+            },
+            "tag_desc": "",
+            "tag_type": -1,
+            "priority": 0,
+            "extra": "",
+            "tag_category": 0,
+            "created_time": 0,
+            "updated_time": 0
+          },
+          {
+            "tag_id": "425",
+            "tag_name": "异地流入",
+            "display_config": {
+              "bg_color": "#3370ff1A",
+              "text_color": "#3370ffFF"
+            },
+            "tag_desc": "",
+            "tag_type": 0,
+            "priority": 3,
+            "extra": "",
+            "tag_category": 0,
+            "created_time": 1729603534,
+            "updated_time": 1730120956
+          }
+        ],
+        "is_new": {
+          "key": "1",
+          "label": "未联系新线索",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "manufacturer_push_id": "1336505355",
+        "feiyu_leads_id": "7691567126963814440",
+        "need_show_interaction_record": true,
+        "virtual_number_type": 0,
+        "new_product_type": {
+          "key": "1",
+          "label": "抖音线索",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "leads_time": 1790832219,
+        "create_time": 1790832219,
+        "ctrl_group": {},
+        "extra": {
+          "dy_customer_id": "7000000000000054",
+          "dy_customer_name": "测试用户53",
+          "dy_customer_avatar": "",
+          "im_conversation_id": "7000000000000055",
+          "origin_dy_customer_uid": "2795430487268762",
+          "origin_dy_customer_name": "示例抖音号8",
+          "follow_dealer_dy_uid": "7000000000000056",
+          "follow_dealer_dy_name": "示例抖音号57",
+          "follow_dealer_name": "示例公司42",
+          "follow_dealer_id": "172696",
+          "source_dealer_dy_uid": "7000000000000007",
+          "source_dealer_dy_name": "示例抖音号8",
+          "source_dealer_name": "示例公司11",
+          "source_dealer_id": "164756",
+          "origin_dy_customer_uniq_id": "7000000000000009",
+          "follow_dealer_dy_uniq_id": "7000000000000058",
+          "source_dealer_dy_uniq_id": "7000000000000009",
+          "feiyu_convert_status": {
+            "key": "5",
+            "label": "外部流量",
+            "is_default": false,
+            "type": 0,
+            "field": ""
+          },
+          "source_account_type": {
+            "key": "3",
+            "label": "企业主账号",
+            "is_default": false,
+            "type": 0,
+            "field": ""
+          }
+        }
+      },
+      {
+        "instance_id": "131",
+        "leads_id": "1102076492",
+        "account_info": {
+          "key": "0001_186831",
+          "label": "",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "customer_id": "0",
+        "name": "未命名",
+        "phone": "13800001059",
+        "city_info": {
+          "key": "15",
+          "label": "内蒙古",
+          "is_default": false,
+          "children": [
+            {
+              "key": "150500",
+              "label": "通辽",
+              "is_default": false,
+              "type": 0,
+              "field": ""
+            }
+          ],
+          "type": 0,
+          "field": ""
+        },
+        "phone_city": {
+          "key": "13800001059",
+          "label": "通辽",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "status": {
+          "key": "1",
+          "label": "未联系",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "source_category": {
+          "key": "5",
+          "label": "私聊线索",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "product_type": {
+          "key": "11",
+          "label": "抖音-企业号",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "sub_product_type": {
+          "key": "11002",
+          "label": "广告直接线索",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "feiyu_action_type": {
+          "key": "4",
+          "label": "私信",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "from_scene": {
+          "key": "1",
+          "label": "短视频",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "from_sub_scene": {
+          "key": "2",
+          "label": "短视频进私留资",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "followup_dealer": {
+          "key": "0001_186831",
+          "label": "示例公司66",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "intention_series": {
+          "key": "10040",
+          "label": "iCAR超级V23",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "intention_car": {
+          "key": "240517",
+          "label": "401两驱进阶版",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "intention_car_year": 2025,
+        "from_shop_info": {
+          "key": "164756",
+          "label": "示例公司11",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "tags": [
+          {
+            "tag_id": "100021",
+            "tag_name": "高价值",
+            "display_config": {
+              "bg_color": "#E6300B",
+              "text_color": "#FFFFFF"
+            },
+            "tag_desc": "",
+            "tag_type": -1,
+            "priority": 0,
+            "extra": "",
+            "tag_category": 0,
+            "created_time": 0,
+            "updated_time": 0
+          },
+          {
+            "tag_id": "425",
+            "tag_name": "异地流入",
+            "display_config": {
+              "bg_color": "#3370ff1A",
+              "text_color": "#3370ffFF"
+            },
+            "tag_desc": "",
+            "tag_type": 0,
+            "priority": 3,
+            "extra": "",
+            "tag_category": 0,
+            "created_time": 1729603534,
+            "updated_time": 1730120956
+          }
+        ],
+        "is_new": {
+          "key": "1",
+          "label": "未联系新线索",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "manufacturer_push_id": "1336345655",
+        "feiyu_leads_id": "7691530637949435919",
+        "need_show_interaction_record": true,
+        "virtual_number_type": 0,
+        "new_product_type": {
+          "key": "1",
+          "label": "抖音线索",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "leads_time": 1790824012,
+        "create_time": 1790824012,
+        "ctrl_group": {},
+        "extra": {
+          "ad_id": "1877540599458954",
+          "ad_owner_id": "1847489220752523",
+          "dy_customer_id": "7000000000000061",
+          "dy_customer_name": "测试用户60",
+          "dy_customer_avatar": "",
+          "im_conversation_id": "7000000000000062",
+          "origin_dy_customer_uid": "2795430487268762",
+          "origin_dy_customer_name": "示例抖音号8",
+          "ad_owner_name": "示例公司21",
+          "follow_dealer_dy_uid": "7000000000000063",
+          "follow_dealer_dy_name": "示例抖音号64",
+          "follow_dealer_name": "示例公司66",
+          "follow_dealer_id": "186831",
+          "source_dealer_dy_uid": "7000000000000007",
+          "source_dealer_dy_name": "示例抖音号8",
+          "source_dealer_name": "示例公司11",
+          "source_dealer_id": "164756",
+          "promotion_id": "7680385924831838254",
+          "promotion_name": "示例抖音号67",
+          "origin_dy_customer_uniq_id": "7000000000000009",
+          "follow_dealer_dy_uniq_id": "7000000000000065",
+          "source_dealer_dy_uniq_id": "7000000000000009",
+          "feiyu_convert_status": {
+            "key": "1",
+            "label": "合法转化",
+            "is_default": false,
+            "type": 0,
+            "field": ""
+          },
+          "source_account_type": {
+            "key": "3",
+            "label": "企业主账号",
+            "is_default": false,
+            "type": 0,
+            "field": ""
+          }
+        }
+      },
+      {
+        "instance_id": "131",
+        "leads_id": "1102067847",
+        "account_info": {
+          "key": "0001_190696",
+          "label": "",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "customer_id": "0",
+        "name": "未命名",
+        "phone": "13800001068",
+        "city_info": {
+          "key": "21",
+          "label": "辽宁",
+          "is_default": false,
+          "children": [
+            {
+              "key": "210300",
+              "label": "鞍山",
+              "is_default": false,
+              "type": 0,
+              "field": ""
+            }
+          ],
+          "type": 0,
+          "field": ""
+        },
+        "phone_city": {
+          "key": "13800001068",
+          "label": "盘锦",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "status": {
+          "key": "1",
+          "label": "未联系",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "source_category": {
+          "key": "5",
+          "label": "私聊线索",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "product_type": {
+          "key": "11",
+          "label": "抖音-企业号",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "sub_product_type": {
+          "key": "11002",
+          "label": "广告直接线索",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "feiyu_action_type": {
+          "key": "4",
+          "label": "私信",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "from_scene": {
+          "key": "1",
+          "label": "短视频",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "from_sub_scene": {
+          "key": "2",
+          "label": "短视频进私留资",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "followup_dealer": {
+          "key": "0001_190696",
+          "label": "示例公司12",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "intention_series": {
+          "key": "10040",
+          "label": "iCAR超级V23",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "intention_car": {
+          "key": "240517",
+          "label": "401两驱进阶版",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "intention_car_year": 2025,
+        "from_shop_info": {
+          "key": "164756",
+          "label": "示例公司11",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "tags": [
+          {
+            "tag_id": "100021",
+            "tag_name": "高价值",
+            "display_config": {
+              "bg_color": "#E6300B",
+              "text_color": "#FFFFFF"
+            },
+            "tag_desc": "",
+            "tag_type": -1,
+            "priority": 0,
+            "extra": "",
+            "tag_category": 0,
+            "created_time": 0,
+            "updated_time": 0
+          },
+          {
+            "tag_id": "425",
+            "tag_name": "异地流入",
+            "display_config": {
+              "bg_color": "#3370ff1A",
+              "text_color": "#3370ffFF"
+            },
+            "tag_desc": "",
+            "tag_type": 0,
+            "priority": 3,
+            "extra": "",
+            "tag_category": 0,
+            "created_time": 1729603534,
+            "updated_time": 1730120956
+          }
+        ],
+        "is_new": {
+          "key": "1",
+          "label": "未联系新线索",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "manufacturer_push_id": "1336336622",
+        "feiyu_leads_id": "7691528767264522267",
+        "need_show_interaction_record": true,
+        "virtual_number_type": 0,
+        "new_product_type": {
+          "key": "1",
+          "label": "抖音线索",
+          "is_default": false,
+          "type": 0,
+          "field": ""
+        },
+        "leads_time": 1790823574,
+        "create_time": 1790823574,
+        "ctrl_group": {},
+        "extra": {
+          "ad_id": "1872282273999923",
+          "ad_owner_id": "1847489220752523",
+          "dy_customer_id": "7000000000000070",
+          "dy_customer_name": "测试用户69",
+          "dy_customer_avatar": "",
+          "im_conversation_id": "7000000000000071",
+          "origin_dy_customer_uid": "2795430487268762",
+          "origin_dy_customer_name": "示例抖音号8",
+          "ad_owner_name": "示例公司21",
+          "follow_dealer_dy_uid": "7000000000000005",
+          "follow_dealer_dy_name": "示例抖音号6",
+          "follow_dealer_name": "示例公司12",
+          "follow_dealer_id": "190696",
+          "source_dealer_dy_uid": "7000000000000007",
+          "source_dealer_dy_name": "示例抖音号8",
+          "source_dealer_name": "示例公司11",
+          "source_dealer_id": "164756",
+          "promotion_id": "7668864337008492586",
+          "promotion_name": "示例抖音号72",
+          "origin_dy_customer_uniq_id": "7000000000000009",
+          "follow_dealer_dy_uniq_id": "7000000000000010",
+          "source_dealer_dy_uniq_id": "7000000000000009",
+          "feiyu_convert_status": {
+            "key": "1",
+            "label": "合法转化",
+            "is_default": false,
+            "type": 0,
+            "field": ""
+          },
+          "source_account_type": {
+            "key": "3",
+            "label": "企业主账号",
+            "is_default": false,
+            "type": 0,
+            "field": ""
+          }
+        }
+      }
+    ],
+    "total": 131,
+    "next_cursor": "1102067847#1790823574",
+    "list_display_limit": 10000
+  }
+}

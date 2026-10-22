@@ -1,0 +1,4 @@
+# Rust 全仓格式化配置（cargo fmt 从源文件目录向上查找本文件）
+# 锁定 edition，避免工具链升级时格式口径漂移
+edition = "2021"
+max_width = 100

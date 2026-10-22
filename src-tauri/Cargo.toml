@@ -1,0 +1,36 @@
+[package]
+name = "dealer-integration"
+version = "0.1.0"
+description = "经销商线索×广告投放整合桌面客户端"
+edition = "2021"
+rust-version = "1.77"
+
+# 静态检查门槛：与 AGENTS.md「禁止禁用代码检测」配套——告警通过改代码解决，不压制
+[lints.rust]
+unsafe_code = "deny"
+
+[lints.clippy]
+all = { level = "warn", priority = -1 }
+# 参数结伴即收拢结构体（评审 Data Clumps 口径）
+too_many_arguments = "deny"
+# 生产路径 Result 上的 unwrap：改用可读错误；cargo clippy 默认不含测试目标，测试不受影响
+unwrap_used = "warn"
+
+[lib]
+name = "dealer_integration_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+calamine = "0.30.1"
+chrono = { version = "0.4.45", features = ["serde"] }
+reqwest = { version = "0.13.3", default-features = false, features = ["json", "rustls", "query"] }
+rusqlite = { version = "0.40.2", features = ["bundled"] }
+rust_xlsxwriter = "0.92.0"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tauri = { version = "2", features = ["tray-icon"] }
+thiserror = "2.0.21"
+tokio = { version = "1.53.3", features = ["macros", "time", "sync", "rt"] }

@@ -1,0 +1,35 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Rust 后端（CodeLLDB）",
+      "type": "lldb",
+      "request": "launch",
+      "program": "${workspaceFolder}/src-tauri/target/debug/dealer-integration.exe",
+      "cwd": "${workspaceFolder}/src-tauri",
+      "preLaunchTask": "tauri: pre-debug",
+      // 打开 WebView2 远程调试端口 9222，供「前端（附加 WebView2）」配置连接
+      "env": {
+        "WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS": "--remote-debugging-port=9222"
+      }
+    },
+    {
+      "name": "前端（附加 WebView2）",
+      "type": "msedge",
+      "request": "attach",
+      "port": 9222,
+      "useWebView": true,
+      "urlFilter": "http://localhost:1420/*",
+      "webRoot": "${workspaceFolder}",
+      // 覆盖冷启动时长：前置任务要等 Vite 就绪再完成 cargo build，期间附加器持续轮询端口
+      "timeout": 600000
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Tauri 开发调试（前端 + Rust）",
+      "configurations": ["Rust 后端（CodeLLDB）", "前端（附加 WebView2）"],
+      "stopAll": true
+    }
+  ]
+}

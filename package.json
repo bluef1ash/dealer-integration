@@ -1,0 +1,37 @@
+{
+  "name": "dealer-integration",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc -b && vite build",
+    "preview": "vite preview",
+    "tauri": "tauri",
+    "typecheck": "vue-tsc -b",
+    "biome:lint": "biome lint",
+    "biome": "biome check src",
+    "precommit": "pnpm run lint && pnpm run biome",
+    "prepare": "husky",
+    "lint": "biome lint src"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2.9.0",
+    "@vue/devtools-api": "^8.2.1",
+    "echarts": "^6.1.0",
+    "naive-ui": "^2.45.3",
+    "pinia": "^4.1.0",
+    "vue": "^3.5.13",
+    "vue-echarts": "^8.3.2"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.15",
+    "@tauri-apps/cli": "^2.9.6",
+    "@vitejs/plugin-vue": "^6.0.0",
+    "husky": "^9.1.7",
+    "less": "^4.9.1",
+    "typescript": "~5.8.3",
+    "vite": "^7.3.0",
+    "vue-tsc": "^3.1.4"
+  }
+}

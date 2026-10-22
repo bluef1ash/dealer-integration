@@ -1,0 +1,25 @@
+{
+  "code": 0,
+  "message": "OK",
+  "data": {
+    "list": [
+      {
+        "advertiser_id": "1700000000",
+        "stat_time_day": "2026-10-19",
+        "spend": "100.00",
+        "impression": "12000",
+        "click": "350",
+        "conversion": "3"
+      },
+      {
+        "advertiser_id": "1700000000",
+        "stat_time_day": "2026-10-18",
+        "spend": "45.50",
+        "impression": "6000",
+        "click": "180",
+        "conversion": "1"
+      }
+    ],
+    "page_info": { "page": 1, "page_size": 100, "total_number": 2 }
+  }
+}

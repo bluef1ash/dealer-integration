@@ -1,0 +1,28 @@
+# 提交前检查：前端类型检查 + Rust 格式/静态检查/测试（husky v9，由 package.json prepare 自动启用）
+# 紧急跳过：git commit --no-verify（AGENTS 禁止在代码里压制检测，逃生口只在提交命令上）
+
+# 部分发行版把 clippy/rustfmt 装在与 cargo 平级的独立目录而不进 PATH：
+# 从 cargo 可执行文件位置向上推导（<发行版根>/clippy-preview/bin），找到才补入，不写死本地路径
+if ! command -v cargo-clippy >/dev/null 2>&1; then
+  CARGO_BIN="$(command -v cargo 2>/dev/null || true)"
+  if [ -n "$CARGO_BIN" ]; then
+    DIST_ROOT="$(dirname "$(dirname "$(dirname "$CARGO_BIN")")")"
+    # 注意按目录存在判断：rustfmt-preview/bin 里没有 cargo-clippy，不能拿单个工具名当探针
+    for tool_dir in "$DIST_ROOT/clippy-preview/bin" "$DIST_ROOT/rustfmt-preview/bin"; do
+      [ -d "$tool_dir" ] && PATH="$tool_dir:$PATH"
+    done
+    export PATH
+  fi
+fi
+
+echo '[pre-commit] pnpm precommit'
+pnpm precommit
+
+echo '[pre-commit] cargo fmt --check'
+(cd src-tauri && cargo fmt --check)
+
+echo '[pre-commit] cargo clippy'
+(cd src-tauri && cargo clippy --quiet)
+
+echo '[pre-commit] cargo test'
+(cd src-tauri && cargo test --quiet)

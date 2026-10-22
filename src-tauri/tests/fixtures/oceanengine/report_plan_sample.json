@@ -1,0 +1,25 @@
+{
+  "code": 0,
+  "message": "OK",
+  "data": {
+    "list": [
+      {
+        "advertiser_id": "1700000000",
+        "promotion_id": "7691306192144973887",
+        "promotion_name": "示例计划甲",
+        "stat_time_day": "2026-10-19",
+        "spend": "60.00",
+        "conversion": "2"
+      },
+      {
+        "advertiser_id": "1700000000",
+        "promotion_id": "7691305845308538921",
+        "promotion_name": "示例计划乙",
+        "stat_time_day": "2026-10-19",
+        "spend": "40.00",
+        "conversion": "1"
+      }
+    ],
+    "page_info": { "page": 1, "page_size": 100, "total_number": 2 }
+  }
+}
