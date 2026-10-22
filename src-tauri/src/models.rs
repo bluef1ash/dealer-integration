@@ -64,6 +64,8 @@ pub struct LeadsFilter {
     pub store_id: Option<i64>,
     /// 按状态 label 精确匹配；选项由前端从 distinct 查询获得
     pub status: Option<String>,
+    /// 搜索串：匹配手机号/姓名/意向车型/计划名（LIKE）
+    pub q: Option<String>,
     /// 留资时间窗口 unix 秒（含头含尾）
     pub from: Option<i64>,
     pub to: Option<i64>,
@@ -94,6 +96,10 @@ pub struct Dashboard {
     pub cpl: i64,
     pub leads: i64,
     pub deals: i64,
+    /// 报表转化数合计（竞价投放页）
+    pub conversions: i64,
+    /// 报表展示数合计
+    pub impressions: i64,
     pub store_cards: Vec<StoreCard>,
     pub plans: Vec<PlanLine>,
 }
@@ -118,6 +124,10 @@ pub struct PlanLine {
     pub promotion_name: String,
     pub spend: f64,
     pub leads: i64,
+    #[serde(default)]
+    pub conversions: i64,
+    #[serde(default)]
+    pub impressions: i64,
     /// 当日有消耗视为投放中
     pub state: &'static str,
 }
@@ -172,6 +182,8 @@ pub struct PlanReportRow {
     pub spend: f64,
     #[serde(default)]
     pub conversions: i64,
+    #[serde(default)]
+    pub impressions: i64,
 }
 
 /// 巨量广告账户（OAuth 授权返回的 advertiser）

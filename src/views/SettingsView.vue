@@ -1,28 +1,35 @@
 <script setup lang="ts">
 import { listen } from '@tauri-apps/api/event'
-import { onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { api } from '../api'
-import DataState from '../components/DataState.vue'
-import OceanCredentialsCard from '../components/OceanCredentialsCard.vue'
-import type { AdAccount, FetchState, LoginEvent, SnapshotOutcome, StoreStatus } from '../types'
+import { showToast } from '../store'
+import type { AdAccount, LoginEvent, SnapshotOutcome, StoreStatus } from '../types'
 import { fmtTime } from '../utils'
 
-const state = ref<FetchState>('loading')
+type SettingsTab = 'stores' | 'mapping' | 'ocean' | 'schedule' | 'data'
+const TABS: Array<{ key: SettingsTab; label: string }> = [
+  { key: 'stores', label: '门店与账号' },
+  { key: 'mapping', label: '广告账户映射' },
+  { key: 'ocean', label: '巨量引擎应用' },
+  { key: 'schedule', label: '采集与对账' },
+  { key: 'data', label: '数据与凭证' },
+]
+const tab = ref<SettingsTab>('stores')
+
 const statuses = ref<StoreStatus[]>([])
 const accounts = ref<AdAccount[]>([])
-/** store_id → 已映射账户 ID 集合 */
 const mappings = ref<Map<number, Set<string>>>(new Map())
 const loginHint = ref('')
 const humanHint = ref('')
 const snapshotResults = ref<SnapshotOutcome[]>([])
+const snapRunning = ref(false)
+const pullingId = ref<number | null>(null)
 
-// 添加门店表单
 const newName = ref('')
 const newAccount = ref('')
 const newPassword = ref('')
 const adding = ref(false)
 
-const snapshotHour = ref(23)
 const schedEnabled = ref(true)
 const schedInterval = ref(60)
 const INTERVAL_OPTIONS = [
@@ -31,12 +38,17 @@ const INTERVAL_OPTIONS = [
   { value: 120, label: '每 2 小时' },
   { value: 180, label: '每 3 小时' },
 ]
-const pullingId = ref<number | null>(null)
+const snapshotHour = ref(23)
 
-let unlisteners: Array<() => void> = []
+// 巨量应用凭证（单应用，App ID / Secret 存本地 settings 表）
+const oceanAppId = ref('')
+const oceanAppSecret = ref('')
+const savingOcean = ref(false)
+const oceanHint = ref('')
+
+const unlisteners: Array<() => void> = []
 
 async function refresh(): Promise<void> {
-  state.value = 'loading'
   try {
     statuses.value = await api.getCollectionStatus()
     accounts.value = await api.listAdAccounts()
@@ -49,14 +61,49 @@ async function refresh(): Promise<void> {
     const sched = await api.getSchedulerConfig()
     schedEnabled.value = sched.enabled
     schedInterval.value = sched.interval_minutes
-    state.value = 'ready'
   } catch (e) {
-    state.value = 'error'
-    loadError.value = String(e)
+    showToast(`读取设置失败：${e}`)
   }
 }
 
-const loadError = ref('')
+async function loadOcean(): Promise<void> {
+  try {
+    const c = await api.getOceanCredentials()
+    oceanAppId.value = c.appId ?? ''
+    oceanAppSecret.value = c.appSecret ?? ''
+  } catch (e) {
+    oceanHint.value = `读取失败：${e}`
+  }
+}
+
+async function saveOcean(): Promise<void> {
+  const id = oceanAppId.value.trim()
+  const secret = oceanAppSecret.value.trim()
+  if (!id || !secret) {
+    oceanHint.value = 'App ID 与 App Secret 均不能为空'
+    return
+  }
+  savingOcean.value = true
+  try {
+    await api.saveOceanCredentials(id, secret)
+    oceanHint.value = '已保存'
+  } catch (e) {
+    oceanHint.value = `保存失败：${e}`
+  } finally {
+    savingOcean.value = false
+  }
+}
+
+async function authorizeOcean(): Promise<void> {
+  loginHint.value = '已打开系统浏览器完成巨量引擎授权…'
+  try {
+    const result = await api.startOceanAuth()
+    loginHint.value = `授权成功，同步到 ${result.accounts.length} 个广告账户`
+    await refresh()
+  } catch (e) {
+    loginHint.value = `授权失败：${e}`
+  }
+}
 
 async function addStore(): Promise<void> {
   if (!newName.value.trim() || !newAccount.value.trim()) {
@@ -114,28 +161,11 @@ async function pullOne(s: StoreStatus): Promise<void> {
   }
 }
 
-async function authorizeOcean(): Promise<void> {
-  loginHint.value = '已打开系统浏览器完成巨量引擎授权…'
-  try {
-    const result = await api.startOceanAuth()
-    loginHint.value = `授权成功，同步到 ${result.accounts.length} 个广告账户`
-    await refresh()
-  } catch (e) {
-    loginHint.value = `授权失败：${e}`
-  }
-}
-
 async function toggleMapping(s: StoreStatus, accountId: string, checked: boolean): Promise<void> {
   await api.setStoreMapping(s.store.id, accountId, checked)
   mappings.value.get(s.store.id)?.[checked ? 'add' : 'delete'](accountId)
 }
 
-async function saveHour(): Promise<void> {
-  await api.setSnapshotHour(snapshotHour.value)
-  loginHint.value = `对账快照时刻已设为每天 ${snapshotHour.value}:00`
-}
-
-const snapRunning = ref(false)
 async function saveScheduler(): Promise<void> {
   try {
     await api.setSchedulerConfig(schedEnabled.value, schedInterval.value)
@@ -145,6 +175,11 @@ async function saveScheduler(): Promise<void> {
   } catch (e) {
     loginHint.value = `保存失败：${e}`
   }
+}
+
+async function saveHour(): Promise<void> {
+  await api.setSnapshotHour(snapshotHour.value)
+  loginHint.value = `对账快照时刻已设为每天 ${snapshotHour.value}:00`
 }
 
 async function snapshotNow(): Promise<void> {
@@ -162,6 +197,7 @@ async function snapshotNow(): Promise<void> {
 
 onMounted(async () => {
   await refresh()
+  await loadOcean()
   unlisteners.push(
     await listen<LoginEvent>('login://result', async (e) => {
       const { store_id, ok, message } = e.payload
@@ -197,198 +233,290 @@ onUnmounted(() => {
     off()
   }
 })
+
+const storeCount = computed(() => statuses.value.length)
+const accountCount = computed(() => accounts.value.length)
 </script>
 
 <template>
-  <section class="toolbar">
-    <h1>设置</h1>
-  </section>
+  <div class="settings-wrap">
+    <nav class="settings-tabs" role="tablist" aria-label="设置分区">
+      <button
+        v-for="t in TABS"
+        :key="t.key"
+        class="settings-tab"
+        :class="{ 'is-active': tab === t.key }"
+        role="tab"
+        :aria-selected="tab === t.key"
+        @click="tab = t.key"
+      >
+        <span>{{ t.label }}</span>
+        <span v-if="t.key === 'stores'" class="sn-count">{{ storeCount }}</span>
+        <span v-if="t.key === 'mapping'" class="sn-count">{{ accountCount }}</span>
+      </button>
+    </nav>
 
-  <p v-if="loginHint" class="banner">{{ loginHint }}</p>
-  <p v-if="humanHint" class="banner warn">⚠ {{ humanHint }}</p>
+    <p v-if="loginHint" class="banner">{{ loginHint }}</p>
+    <p v-if="humanHint" class="banner warn">⚠ {{ humanHint }}</p>
 
-  <OceanCredentialsCard />
-
-  <section class="card">
-    <h2>门店与巨懂车账号</h2>
-    <DataState :state="state">
-      <template v-if="state === 'error'">
-        <p class="error">读取失败：{{ loadError }}</p>
-        <button type="button" class="ghost" @click="refresh">重试</button>
-      </template>
-      <template v-else>
-        <div class="tblwrap">
-          <table>
+    <!-- ── 门店与账号 ── -->
+    <section v-show="tab === 'stores'" class="settings-pane" role="tabpanel">
+      <section class="panel">
+        <div class="panel-head">
+          <div>
+            <h2>门店与巨懂车账号</h2>
+            <p class="sub">每店一个巨懂车账号，会话失效时可自动或人工重登</p>
+          </div>
+          <span class="pill">{{ storeCount }} 家</span>
+        </div>
+        <div class="mapping-wrap">
+          <table class="ds-table store-table">
             <thead>
-              <tr><th>门店</th><th>巨懂车账号</th><th>会话</th><th>最近成功采集</th><th>回填</th><th>操作</th></tr>
+              <tr>
+                <th>门店 / 账号</th>
+                <th>会话</th>
+                <th>最近采集</th>
+                <th class="num-col">操作</th>
+              </tr>
             </thead>
             <tbody>
               <tr v-for="s in statuses" :key="s.store.id">
-                <td>{{ s.store.name }}</td>
-                <td>{{ s.store.account }}</td>
                 <td>
-                  <span
-                    v-if="!s.has_session"
-                    class="bad"
-                  >未登录</span>
-                  <span
-                    v-else-if="s.last_error"
-                    class="bad"
-                    :title="s.last_error"
-                  >拉取失败</span>
-                  <span v-else class="ok">有效</span>
+                  {{ s.store.name }}
+                  <small class="account">{{ s.store.account }}</small>
                 </td>
-                <td>{{ fmtTime(s.last_success_at) }}</td>
-                <td>{{ s.backfilled ? '已完成' : '待回填' }}</td>
-                <td class="ops">
-                  <button type="button" class="ghost" @click="startLogin(s)">
-                    {{ s.has_session ? '重新登录' : '登录' }}
-                  </button>
-                  <button type="button" class="ghost" :disabled="pullingId === s.store.id" @click="pullOne(s)">
-                    {{ pullingId === s.store.id ? '拉取中…' : '拉取' }}
-                  </button>
-                  <button type="button" class="ghost danger" @click="removeStore(s)">删除</button>
+                <td>
+                  <span v-if="!s.has_session" class="pill pill-muted">未登录</span>
+                  <span v-else-if="s.last_error" class="pill pill-warn" :title="s.last_error">
+                    <span class="dot warn"></span>拉取失败
+                  </span>
+                  <span v-else class="pill pill-ok"><span class="dot ok"></span>有效</span>
+                </td>
+                <td><span class="last-time">{{ fmtTime(s.last_success_at) }}</span></td>
+                <td>
+                  <div class="row-actions">
+                    <button class="btn" @click="startLogin(s)">{{ s.has_session ? '重新登录' : '登录' }}</button>
+                    <button class="btn" :disabled="pullingId === s.store.id" @click="pullOne(s)">
+                      {{ pullingId === s.store.id ? '拉取中…' : '拉取' }}
+                    </button>
+                    <button class="btn danger" @click="removeStore(s)">删除</button>
+                  </div>
                 </td>
               </tr>
-              <tr v-if="statuses.length === 0">
-                <td colspan="6" class="none">还没有门店，用下方表单添加第一家。</td>
+              <tr v-if="!statuses.length">
+                <td colspan="4" class="empty-row">还没有门店，用下方表单添加第一家。</td>
               </tr>
             </tbody>
           </table>
         </div>
 
-        <div class="add-form">
-          <input v-model="newName" type="text" placeholder="门店名称，如：城东店" />
-          <input v-model="newAccount" type="text" placeholder="巨懂车账号（手机号）" />
-          <input v-model="newPassword" type="password" placeholder="密码（可选，供自动重登）" autocomplete="new-password" />
-          <button type="button" :disabled="adding" @click="addStore">{{ adding ? '添加中…' : '+ 添加门店' }}</button>
+        <div class="add-store">
+          <input v-model="newName" class="input" placeholder="门店名称，如：城北店" aria-label="门店名称" />
+          <input v-model="newAccount" class="input" placeholder="巨懂车账号（手机号）" aria-label="巨懂车账号" />
+          <input
+            v-model="newPassword"
+            class="input span-2"
+            type="password"
+            placeholder="密码（可选，供自动重登）"
+            aria-label="密码"
+            autocomplete="new-password"
+          />
+          <button class="btn" :disabled="adding" @click="addStore">{{ adding ? '添加中…' : '添加门店' }}</button>
         </div>
-        <p class="hint">
-          密码仅存系统凭证库（Windows 凭据管理器 / macOS 钥匙串），供会话失效自动重登；不填则失效时需人工登录。
+        <p class="form-hint">
+          密码仅存系统凭证库（Windows 凭据管理器 / macOS 钥匙串），不写入业务数据库；
           登录在应用内嵌窗口完成，支持账号密码或短信验证码，滑块需人工拖动。
         </p>
+      </section>
+    </section>
 
-        <template v-if="accounts.length > 0">
-          <h2 class="sub">门店 ↔ 巨量广告账户映射</h2>
-          <div class="tblwrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>门店</th>
-                  <th v-for="a in accounts" :key="a.id">{{ a.alias || a.id }}</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="s in statuses" :key="s.store.id">
-                  <td>{{ s.store.name }}</td>
-                  <td v-for="a in accounts" :key="a.id" class="center">
-                    <input
-                      type="checkbox"
-                      :checked="mappings.get(s.store.id)?.has(a.id)"
-                      @change="toggleMapping(s, a.id, ($event.target as HTMLInputElement).checked)"
-                    />
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+    <!-- ── 广告账户映射 ── -->
+    <section v-show="tab === 'mapping'" class="settings-pane" role="tabpanel">
+      <section class="panel">
+        <div class="panel-head">
+          <div>
+            <h2>门店 ↔ 广告账户映射</h2>
+            <p class="sub">多对多映射决定广告消耗如何归因到门店</p>
           </div>
-        </template>
-
-        <div class="ocean-ops">
-          <button type="button" class="ghost" @click="authorizeOcean">+ 授权巨量广告账户</button>
-          <span class="hint">已在开放平台配置 App ID / Secret 后可用；授权在系统浏览器完成，回调本机 127.0.0.1:1720。</span>
         </div>
-      </template>
-    </DataState>
-  </section>
+        <div class="mapping-wrap">
+          <table class="ds-table mapping-table">
+            <thead>
+              <tr>
+                <th>门店</th>
+                <th v-for="a in accounts" :key="a.id">{{ a.alias || a.id }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="s in statuses" :key="s.store.id">
+                <td>{{ s.store.name }}</td>
+                <td v-for="a in accounts" :key="a.id" class="center">
+                  <input
+                    type="checkbox"
+                    :checked="mappings.get(s.store.id)?.has(a.id)"
+                    @change="toggleMapping(s, a.id, ($event.target as HTMLInputElement).checked)"
+                  />
+                </td>
+              </tr>
+              <tr v-if="!accounts.length || !statuses.length">
+                <td :colspan="accounts.length + 1" class="empty-row">
+                  {{ accounts.length ? '先添加门店' : '尚无广告账户：先在「巨量引擎应用」完成 OAuth 授权' }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="form-hint">勾选后立即保存；未映射的门店只统计线索，不计算广告消耗。</p>
+      </section>
+    </section>
 
-  <section class="card">
-    <h2>定时拉取</h2>
-    <div class="snap-row">
-      <label>
-        <input v-model="schedEnabled" type="checkbox" />
-        自动拉取
-      </label>
-      <select v-model.number="schedInterval" class="hour" :disabled="!schedEnabled">
-        <option v-for="o in INTERVAL_OPTIONS" :key="o.value" :value="o.value">{{ o.label }}</option>
-      </select>
-      <button type="button" class="ghost" @click="saveScheduler">保存</button>
-    </div>
-    <p class="hint">
-      开启时应用运行期间按所选间隔自动拉取线索与报表（新门店首轮回填 90 天，之后每轮重拉近 7 天）；
-      关闭后仅手动拉取，每日对账快照也一并停用。修改后下一轮生效。
-    </p>
-  </section>
+    <!-- ── 巨量引擎应用 ── -->
+    <section v-show="tab === 'ocean'" class="settings-pane" role="tabpanel">
+      <section class="panel">
+        <div class="panel-head">
+          <div>
+            <h2>巨量引擎应用</h2>
+            <p class="sub">商业开放平台的应用凭证，用于 OAuth 授权与 Marketing API 拉取报表</p>
+          </div>
+          <span class="pill" :class="oceanAppId ? 'pill-ok' : 'pill-warn'">{{ oceanAppId ? '已配置' : '未配置' }}</span>
+        </div>
+        <div class="field-row">
+          <label class="field">
+            <span>App ID</span>
+            <input v-model="oceanAppId" class="input" type="text" autocomplete="off" spellcheck="false" />
+          </label>
+          <label class="field">
+            <span>App Secret</span>
+            <input v-model="oceanAppSecret" class="input" type="password" autocomplete="new-password" spellcheck="false" />
+          </label>
+        </div>
+        <div class="form-actions">
+          <button class="btn btn-sm" :disabled="savingOcean" @click="saveOcean">
+            {{ savingOcean ? '保存中…' : '保存凭证' }}
+          </button>
+          <button class="btn btn-sm btn-primary" @click="authorizeOcean">去授权（系统浏览器）</button>
+          <span class="form-hint inline">OAuth 回调本机 127.0.0.1:1720，token 存系统凭证库</span>
+        </div>
+        <p v-if="oceanHint" class="form-hint" :class="{ 'is-error': oceanHint.startsWith('保存失败'), 'is-ok': oceanHint === '已保存' }">
+          {{ oceanHint }}
+        </p>
+      </section>
 
-  <section class="card">
-    <h2>对账快照</h2>
-    <div class="snap-row">
-      <label>每日 <input v-model.number="snapshotHour" type="number" min="0" max="23" class="hour" /> 点执行</label>
-      <button type="button" class="ghost" @click="saveHour">保存时刻</button>
-      <button type="button" class="ghost" :disabled="snapRunning" @click="snapshotNow">
-        {{ snapRunning ? '对账中…' : '立即对账' }}
-      </button>
-    </div>
-    <div v-if="snapshotResults.length" class="tblwrap">
-      <table>
-        <thead><tr><th>门店</th><th>结果</th><th>快照行数</th></tr></thead>
-        <tbody>
-          <tr v-for="r in snapshotResults" :key="r.store_id">
-            <td>{{ statuses.find((s) => s.store.id === r.store_id)?.store.name ?? r.store_id }}</td>
-            <td><span :class="r.ok ? 'ok' : 'bad'">{{ r.ok ? '完成' : '失败' }}</span>{{ r.ok ? '' : `：${r.error}` }}</td>
-            <td>{{ r.seen }}</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-    <p class="hint">对账每日自动触发一次导出并合并，纠正增量拉取的字段漂移；一天只产生一条导出记录。</p>
-  </section>
+      <section class="panel panel-note">
+        <h2>应用与账户的关系</h2>
+        <ul class="note-list">
+          <li><b>一个应用</b>：对应商业开放平台的一组 App ID / Secret，可授权多个广告账户与主体。</li>
+          <li><b>账户映射</b>：已授权账户再与门店做多对多绑定，决定广告消耗如何归因。</li>
+          <li><b>已授权账户</b>：{{ accounts.length ? accounts.map((a) => a.alias || a.id).join('、') : '尚无，完成 OAuth 后自动进入映射表' }}</li>
+        </ul>
+      </section>
+    </section>
+
+    <!-- ── 采集与对账 ── -->
+    <section v-show="tab === 'schedule'" class="settings-pane" role="tabpanel">
+      <section class="panel">
+        <div class="panel-head">
+          <div>
+            <h2>采集调度</h2>
+            <p class="sub">应用运行期间按间隔自动拉取</p>
+          </div>
+        </div>
+        <label class="switch-row">
+          <span>
+            <b>自动拉取</b>
+            <small>关闭后仅手动拉取，每日对账也停用</small>
+          </span>
+          <input v-model="schedEnabled" type="checkbox" />
+          <span class="switch" aria-hidden="true"></span>
+        </label>
+        <div class="field-row">
+          <label class="field">
+            <span>拉取间隔</span>
+            <select v-model.number="schedInterval" class="control" :disabled="!schedEnabled">
+              <option v-for="o in INTERVAL_OPTIONS" :key="o.value" :value="o.value">{{ o.label }}</option>
+            </select>
+          </label>
+        </div>
+        <p class="form-hint">新门店首轮回填 90 天，之后每轮重拉最近 7 天，覆盖线索状态变更。修改后下一轮生效。</p>
+        <div class="form-actions">
+          <button class="btn btn-sm" @click="saveScheduler">保存设置</button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <div>
+            <h2>对账快照</h2>
+            <p class="sub">每日导出一次巨懂车表格，纠正增量字段漂移</p>
+          </div>
+        </div>
+        <div class="field-row">
+          <label class="field">
+            <span>每日执行时刻（0-23 点）</span>
+            <input v-model.number="snapshotHour" class="input" type="number" min="0" max="23" step="1" />
+          </label>
+          <div class="field">
+            <span>合并口径</span>
+            <p class="readout">按飞鱼线索 ID 合并</p>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button class="btn btn-sm" @click="saveHour">保存时刻</button>
+          <button class="btn btn-sm" :disabled="snapRunning" @click="snapshotNow">
+            {{ snapRunning ? '对账中…' : '立即对账' }}
+          </button>
+        </div>
+        <div v-if="snapshotResults.length" class="mapping-wrap">
+          <table class="ds-table store-table">
+            <thead>
+              <tr><th>门店</th><th>结果</th><th class="num-col">快照行数</th></tr>
+            </thead>
+            <tbody>
+              <tr v-for="r in snapshotResults" :key="r.store_id">
+                <td>{{ statuses.find((s) => s.store.id === r.store_id)?.store.name ?? r.store_id }}</td>
+                <td>
+                  <span class="pill" :class="r.ok ? 'pill-ok' : 'pill-warn'">{{ r.ok ? '完成' : '失败' }}</span>
+                  {{ r.ok ? '' : `：${r.error}` }}
+                </td>
+                <td class="num-col">{{ r.seen }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </section>
+
+    <!-- ── 数据与凭证 ── -->
+    <section v-show="tab === 'data'" class="settings-pane" role="tabpanel">
+      <section class="panel panel-note">
+        <h2>数据与凭证</h2>
+        <ul class="note-list">
+          <li><b>业务数据</b>：存本地 SQLite，位于系统应用数据目录。</li>
+          <li><b>登录凭证</b>：巨懂车密码 / 会话、巨量 OAuth token 存系统凭证库。</li>
+          <li><b>巨量引擎应用</b>：App ID / Secret 存本地 settings 表。</li>
+          <li><b>线索 ID</b>：以列表接口为主键，快照按飞鱼线索 ID 找回后合并。</li>
+          <li><b>分发</b>：为手动安装包，无自动更新与多租户。</li>
+        </ul>
+      </section>
+    </section>
+  </div>
 </template>
 
 <style scoped>
-.toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-.toolbar h1 { font-size: 22px; }
 .banner {
-  background: #eef2ff; color: #3730a3; border-radius: 10px;
-  padding: 10px 16px; font-size: 13px; margin-bottom: 16px;
+  background: color-mix(in srgb, var(--accent) 9%, var(--surface));
+  border-radius: 8px;
+  padding: 10px 16px;
+  font-size: 13px;
+  margin-bottom: 2px;
 }
-.banner.warn { background: #fef3c7; color: #92400e; }
-.card {
-  background: #fff; border: 1px solid #e7e5e4; border-radius: 16px;
-  padding: 16px 20px; margin-bottom: 20px;
+
+.banner.warn {
+  background: color-mix(in srgb, var(--warn) 10%, var(--surface));
+  color: var(--warn);
 }
-.card h2 { font-size: 16px; margin-bottom: 10px; }
-.card h2.sub { margin-top: 20px; }
-.tblwrap { border: 1px solid #f0efee; border-radius: 12px; overflow-x: auto; }
-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #f0efee; color: #44403c; }
-th { color: #a8a29e; font-weight: 500; font-size: 12px; }
-.center { text-align: center; }
-.ok { color: #059669; }
-.bad { color: #92400e; background: #fef3c7; border-radius: 6px; padding: 2px 8px; font-size: 12px; }
-.ops { display: flex; gap: 6px; }
-.ghost {
-  border: 1px solid #4f46e5; color: #4f46e5; background: none;
-  border-radius: 10px; padding: 5px 12px; font-size: 12px; cursor: pointer; white-space: nowrap;
+
+.last-time {
+  font-size: 11.5px;
 }
-.ghost:disabled { color: #a8a29e; border-color: #e7e5e4; cursor: default; }
-.ghost.danger { border-color: #dc2626; color: #dc2626; }
-.add-form { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
-.add-form input {
-  flex: 1; min-width: 140px; border: 1px solid #d6d3d1; border-radius: 10px;
-  padding: 8px 12px; font-size: 13px;
-}
-.add-form button {
-  border: 1px solid #4f46e5; color: #fff; background: #4f46e5;
-  border-radius: 10px; padding: 8px 16px; font-size: 13px; cursor: pointer;
-}
-.add-form button:disabled { opacity: 0.6; cursor: default; }
-.hint { font-size: 12px; color: #a8a29e; margin-top: 10px; }
-.error { font-size: 13px; color: #991b1b; margin-bottom: 10px; }
-.none { color: #a8a29e; text-align: center; padding: 16px 0; }
-.ocean-ops { margin-top: 16px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-.snap-row { display: flex; gap: 12px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
-.snap-row label { font-size: 13px; color: #57534e; display: flex; align-items: center; gap: 6px; }
-.snap-row input[type='checkbox'] { width: 16px; height: 16px; }
-.hour { width: 60px; border: 1px solid #d6d3d1; border-radius: 8px; padding: 6px 8px; font-size: 13px; }
 </style>

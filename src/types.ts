@@ -55,6 +55,8 @@ export interface LeadPage {
 export interface LeadsFilter {
   store_id: number | null
   status: string | null
+  /** 搜索串：匹配手机号/姓名/意向车型/计划名 */
+  q: string | null
   from: number | null
   to: number | null
   page: number
@@ -86,6 +88,8 @@ export interface PlanLine {
   promotion_name: string
   spend: number
   leads: number
+  conversions: number
+  impressions: number
   state: string
 }
 
@@ -95,6 +99,10 @@ export interface Dashboard {
   cpl: number
   leads: number
   deals: number
+  /** 报表转化数合计 */
+  conversions: number
+  /** 报表展示数合计 */
+  impressions: number
   store_cards: StoreCard[]
   plans: PlanLine[]
 }

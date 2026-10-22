@@ -88,13 +88,22 @@ pub fn upsert_plan_reports(conn: &Connection, rows: &[PlanReportRow]) -> AppResu
     let mut n = 0;
     for r in rows {
         n += tx.execute(
-            "INSERT INTO plan_reports_daily (ad_account_id, promotion_id, promotion_name, date, spend, conversions)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6)
+            "INSERT INTO plan_reports_daily (ad_account_id, promotion_id, promotion_name, date, spend, conversions, impressions)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
              ON CONFLICT(ad_account_id, promotion_id, date) DO UPDATE SET
                 promotion_name = excluded.promotion_name,
                 spend = excluded.spend,
-                conversions = excluded.conversions",
-            rusqlite::params![r.ad_account_id, r.promotion_id, r.promotion_name, r.date, r.spend, r.conversions],
+                conversions = excluded.conversions,
+                impressions = excluded.impressions",
+            rusqlite::params![
+                r.ad_account_id,
+                r.promotion_id,
+                r.promotion_name,
+                r.date,
+                r.spend,
+                r.conversions,
+                r.impressions
+            ],
         )?;
     }
     tx.commit()?;

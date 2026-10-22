@@ -17,6 +17,8 @@
   },
   "dependencies": {
     "@tauri-apps/api": "^2.9.0",
+    "@vue/devtools-api": "^8.2.1",
+    "pinia": "^4.1.0",
     "vue": "^3.5.13"
   },
   "devDependencies": {
@@ -24,6 +26,7 @@
     "@tauri-apps/cli": "^2.9.6",
     "@vitejs/plugin-vue": "^6.0.0",
     "husky": "^9.1.7",
+    "less": "^4.9.1",
     "typescript": "~5.8.3",
     "vite": "^7.3.0",
     "vue-tsc": "^3.1.4"

@@ -1,0 +1,2344 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>经销商运营台 · 线索与投放整合</title>
+<style>
+  /* ── 设计令牌：modern-minimal 变体，克制的中性底 + 单一蓝色数据强调 ── */
+  :root {
+    --bg: oklch(99% 0.002 240);
+    --surface: oklch(100% 0 0);
+    --fg: oklch(18% 0.012 250);
+    --fg-hover: oklch(31% 0.012 250);
+    --muted: oklch(54% 0.012 250);
+    --border: oklch(92% 0.005 250);
+    --border-strong: oklch(83% 0.006 250);
+    --accent: oklch(58% 0.18 255);
+    --ok: oklch(47% 0.11 155);
+    --warn: oklch(48% 0.11 68);
+    --danger: oklch(51% 0.17 25);
+    --accent-soft: color-mix(in srgb, var(--accent) 9%, var(--surface));
+    --accent-bar: color-mix(in srgb, var(--accent) 40%, var(--surface));
+    --fg-soft: color-mix(in srgb, var(--fg) 5%, var(--surface));
+    --font-display: "PingFang SC", "HarmonyOS Sans SC", "Microsoft YaHei UI", system-ui, sans-serif;
+    --font-body: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei UI", "Segoe UI", sans-serif;
+    --font-mono: "SF Mono", "Cascadia Mono", ui-monospace, "JetBrains Mono", Menlo, Consolas, monospace;
+    --radius: 8px;
+    --radius-lg: 12px;
+    --shadow-pop: 0 10px 30px color-mix(in srgb, var(--fg) 12%, transparent);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg);
+    font-family: var(--font-body); font-size: 14px; line-height: 1.55;
+    text-rendering: optimizeLegibility; -webkit-font-smoothing: antialiased;
+  }
+  h1, h2, h3 { font-family: var(--font-display); margin: 0; font-weight: 600; }
+  p { margin: 0; }
+  a { color: inherit; text-decoration: none; }
+  button { font: inherit; color: inherit; cursor: pointer; }
+  table { border-collapse: collapse; width: 100%; }
+  [hidden] { display: none !important; }
+  ::selection { background: color-mix(in srgb, var(--accent) 22%, transparent); }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+  .meta { font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
+  .sub { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+  .eyebrow {
+    font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--muted); margin-bottom: 6px;
+  }
+
+  /* ── 桌面外壳：自定义标题栏 + 常驻侧栏 + 全宽工作区 ── */
+  .titlebar {
+    display: flex; align-items: center; gap: 12px; height: 40px; padding-left: 14px;
+    background: var(--surface); border-bottom: 1px solid var(--border); user-select: none;
+  }
+  .tb-icon {
+    width: 28px; height: 28px; flex: none; display: grid; place-items: center;
+    border: 0; border-radius: 6px; background: none; color: var(--muted);
+    transition: background 0.12s, color 0.12s;
+  }
+  .tb-icon:hover { background: var(--fg-soft); color: var(--fg); }
+  .tb-icon svg { width: 15px; height: 15px; }
+  .tb-brand { display: flex; align-items: center; gap: 8px; flex: none; }
+  .tb-brand b { font-family: var(--font-display); font-size: 13px; font-weight: 600; letter-spacing: -0.01em; }
+  .tb-version {
+    font-family: var(--font-mono); font-size: 10px; color: var(--muted);
+    border: 1px solid var(--border); border-radius: 999px; padding: 0 6px; line-height: 16px;
+  }
+  .brand-mark {
+    width: 22px; height: 22px; border-radius: 6px; background: var(--fg); color: var(--surface);
+    display: grid; place-items: center; flex: none;
+  }
+  .brand-mark svg { width: 13px; height: 13px; }
+  .tb-status {
+    flex: 1; display: flex; align-items: center; justify-content: center; gap: 7px;
+    font-size: 11.5px; color: var(--muted); min-width: 0;
+  }
+  .tb-status span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .win-controls { display: flex; align-self: stretch; }
+  .win-btn {
+    width: 44px; height: 100%; border: 0; background: none; color: var(--muted);
+    display: grid; place-items: center; transition: background 0.12s, color 0.12s;
+  }
+  .win-btn svg { width: 11px; height: 11px; }
+  .win-btn:hover { background: var(--fg-soft); color: var(--fg); }
+  .win-btn.close:hover { background: var(--danger); color: var(--surface); }
+
+  /* 桌面窗口宽度有限，侧栏可收成 64px 图标轨道，把横向空间还给表格与图表 */
+  .app { display: grid; grid-template-columns: 216px minmax(0, 1fr); min-height: calc(100vh - 41px); }
+  .sidebar {
+    position: relative; min-height: calc(100vh - 41px); display: flex; flex-direction: column;
+    gap: 4px; padding: 14px 12px; background: var(--surface);
+    border-right: 1px solid var(--border);
+  }
+
+  .nav { display: flex; flex-direction: column; gap: 10px; }
+  .nav-group { display: flex; flex-direction: column; gap: 2px; }
+  .nav-label {
+    font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.1em; color: var(--muted);
+    padding: 14px 10px 5px; margin: 0;
+  }
+  .nav-group:first-child .nav-label { padding-top: 2px; }
+  .nav-item {
+    display: flex; align-items: center; gap: 10px; width: 100%; padding: 9px 10px;
+    border: 0; border-radius: var(--radius); background: transparent; color: var(--muted);
+    font-size: 13.5px; text-align: left; transition: background 0.15s, color 0.15s;
+  }
+  .nav-item svg { width: 17px; height: 17px; flex: none; }
+  .nav-item:hover { background: var(--fg-soft); color: var(--fg); }
+  .nav-item.is-active { background: var(--fg-soft); color: var(--fg); font-weight: 500; }
+  .nav-item.is-active svg { color: var(--fg); }
+
+  .sidebar-foot { margin-top: auto; display: flex; flex-direction: column; gap: 12px; }
+  .engine { border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 12px; background: var(--bg); }
+  .engine-head { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 500; margin-bottom: 8px; }
+  .engine-row { display: flex; justify-content: space-between; font-size: 11.5px; color: var(--muted); padding: 2px 0; }
+  .engine-row b { font-family: var(--font-mono); color: var(--fg); font-weight: 500; }
+  .engine-link { width: 100%; border: 0; background: none; text-align: left; border-radius: 4px; }
+  .engine-link:hover span { color: var(--fg); }
+  .engine-alert {
+    margin-top: 8px; border: 0; background: none; padding: 0; color: var(--warn);
+    font-size: 11.5px; text-decoration: underline; text-underline-offset: 2px;
+  }
+  .engine-alert:hover { color: var(--fg); }
+  .dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; flex: none; background: var(--muted); }
+  .dot.ok { background: var(--ok); }
+  .dot.warn { background: var(--warn); }
+
+  /* 收起态：图标轨道 + 单点健康指示，悬停出原生提示 */
+  .sidebar-note { font-family: var(--font-mono); font-size: 10px; color: var(--muted); padding-left: 2px; }
+  .rail-status {
+    display: none; width: 100%; height: 34px; place-items: center;
+    border: 0; border-radius: var(--radius); background: none;
+  }
+  .rail-status:hover { background: var(--fg-soft); }
+  .rail-status .dot { width: 7px; height: 7px; }
+  body.rail .app { grid-template-columns: 64px minmax(0, 1fr); }
+  body.rail .sidebar { padding: 14px 8px; }
+  body.rail .nav-label { display: none; }
+  body.rail .nav-group + .nav-group { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
+  body.rail .nav-item { justify-content: center; gap: 0; padding: 9px 0; }
+  body.rail .nav-item > span { display: none; }
+  body.rail .engine, body.rail .sidebar-note { display: none; }
+  body.rail .rail-status { display: grid; }
+
+  /* ── 视图工具栏 ── */
+  .main { min-width: 0; display: flex; flex-direction: column; }
+  .topbar {
+    position: relative; z-index: 30; display: flex; align-items: center;
+    justify-content: space-between; gap: 24px; padding: 12px 28px;
+    background: var(--bg); border-bottom: 1px solid var(--border);
+  }
+  .page-head h1 { font-size: 20px; letter-spacing: -0.015em; line-height: 1.25; }
+  .page-head p { font-size: 12.5px; color: var(--muted); margin-top: 1px; }
+  .top-actions { display: flex; align-items: center; gap: 12px; }
+  .store-filter { display: flex; align-items: center; gap: 7px; }
+  .store-filter > span { font-size: 12px; color: var(--muted); }
+  .sync { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); white-space: nowrap; }
+  .sync.is-busy .dot { animation: pulse 1s ease-in-out infinite; }
+
+  @keyframes pulse { 50% { opacity: 0.25; } }
+
+  .content { flex: 1; padding: 22px 28px 56px; }
+
+  /* ── 控件 ── */
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+    height: 34px; padding: 0 14px; border-radius: var(--radius);
+    border: 1px solid var(--border); background: var(--surface); color: var(--fg);
+    font-size: 13px; font-weight: 500; white-space: nowrap;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+  }
+  .btn:hover { background: var(--fg-soft); border-color: var(--border-strong); }
+  .btn:disabled { cursor: default; opacity: 0.55; }
+  .btn svg { width: 15px; height: 15px; }
+  .btn-primary { background: var(--fg); border-color: var(--fg); color: var(--surface); }
+  .btn-primary:hover { background: var(--fg-hover); border-color: var(--fg-hover); }
+  .btn-sm { height: 28px; padding: 0 10px; font-size: 12px; }
+  .btn-danger-text { border-color: transparent; background: none; color: var(--muted); }
+  .btn-danger-text:hover { color: var(--danger); background: color-mix(in srgb, var(--danger) 7%, transparent); border-color: transparent; }
+  .icon-btn {
+    width: 30px; height: 30px; display: grid; place-items: center; flex: none;
+    border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface);
+  }
+  .icon-btn:hover { background: var(--fg-soft); }
+  .icon-btn svg { width: 15px; height: 15px; }
+
+  .control {
+    height: 32px; padding: 0 9px; border: 1px solid var(--border); border-radius: var(--radius);
+    background: var(--surface); color: var(--fg); font: inherit; font-size: 12.5px;
+  }
+  .control:hover { border-color: var(--border-strong); }
+  .control:disabled { opacity: 0.55; cursor: default; background: var(--bg); }
+  .input {
+    width: 100%; height: 34px; padding: 0 11px; border: 1px solid var(--border);
+    border-radius: var(--radius); background: var(--surface); color: var(--fg);
+    font: inherit; font-size: 13px;
+  }
+  .input:focus { border-color: var(--accent); outline: 2px solid var(--accent-soft); outline-offset: 0; }
+  .input::placeholder { color: var(--muted); }
+  .input[readonly] { background: var(--bg); color: var(--muted); }
+  .input:disabled { opacity: 0.55; background: var(--bg); cursor: default; }
+
+  .seg { display: inline-flex; padding: 3px; gap: 2px; background: var(--fg-soft); border: 1px solid var(--border); border-radius: 9px; }
+  .seg button {
+    height: 26px; padding: 0 11px; border: 0; border-radius: 6px; background: transparent;
+    color: var(--muted); font-size: 12.5px; transition: background 0.15s, color 0.15s;
+  }
+  .seg button:hover { color: var(--fg); }
+  .seg button.is-on { background: var(--surface); color: var(--fg); font-weight: 500; box-shadow: 0 1px 2px color-mix(in srgb, var(--fg) 9%, transparent); }
+
+  .view-bar { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; }
+  .view-meta { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--muted); }
+  .custom-range { display: flex; align-items: center; gap: 8px; }
+  .custom-range .dash { color: var(--muted); font-size: 12px; }
+
+  /* ── KPI ── */
+  .kpi-band {
+    display: grid; grid-template-columns: minmax(280px, 0.92fr) 1.5fr;
+    gap: 1px; background: var(--border); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); overflow: hidden; margin-bottom: 16px;
+  }
+  .kpi-main { background: var(--surface); padding: 22px 26px 20px; }
+  .big-num { display: flex; align-items: baseline; font-family: var(--font-mono); font-variant-numeric: tabular-nums; letter-spacing: -0.045em; line-height: 1; }
+  .big-cur { font-size: 26px; color: var(--muted); margin-right: 4px; font-weight: 500; }
+  #kpi-cpl { font-size: clamp(48px, 5vw, 62px); font-weight: 600; }
+  .big-per { font-size: 14px; color: var(--muted); margin-left: 6px; letter-spacing: 0; }
+  .kpi-label { font-size: 12.5px; color: var(--muted); margin-top: 8px; }
+  .kpi-delta { font-size: 12px; color: var(--muted); margin-top: 6px; }
+  .delta-bad { color: var(--danger); font-weight: 500; }
+  .delta-good { color: var(--ok); font-weight: 500; }
+
+  .kpi-side { background: var(--surface); display: grid; grid-template-columns: 1fr 1fr; }
+  .kpi-cell { padding: 16px 22px; border-left: 1px solid var(--border); }
+  .kpi-cell:nth-child(1), .kpi-cell:nth-child(2) { border-bottom: 1px solid var(--border); }
+  .kpi-cell:nth-child(odd) { border-left: 0; }
+  .kpi-cell > p { font-size: 12px; color: var(--muted); }
+  .kpi-cell-num { display: flex; align-items: baseline; gap: 4px; margin-top: 3px; }
+  .kpi-cell-num b { font-family: var(--font-mono); font-size: 24px; font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+  .kpi-cell-num span { font-size: 12px; color: var(--muted); }
+  .kpi-cell small { display: block; font-size: 11.5px; color: var(--muted); margin-top: 1px; }
+
+  /* ── 面板 ── */
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 18px 20px; }
+  .panel-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 14px; }
+  .panel-head h2 { font-size: 15px; letter-spacing: -0.01em; }
+  .panel-actions { display: flex; align-items: center; justify-content: flex-end; gap: 12px; flex-wrap: wrap; }
+  .chart-panel { margin-bottom: 22px; }
+  .chart-total { text-align: right; }
+  .chart-total b { display: block; font-family: var(--font-mono); font-size: 19px; font-weight: 600; line-height: 1.2; }
+  .chart-total span { font-size: 11.5px; color: var(--muted); }
+
+  .chart { position: relative; height: 190px; margin-top: 4px; }
+  .chart svg { width: 100%; height: 100%; display: block; overflow: visible; }
+  .bar { fill: var(--accent-bar); transition: fill 0.12s; }
+  .bar.is-peak { fill: var(--accent); }
+  .bar.is-hover { fill: var(--accent); }
+  .avg-line { stroke: var(--border-strong); stroke-width: 1.2; stroke-dasharray: 4 4; }
+  .chart-tip {
+    position: absolute; top: 2px; left: 0; min-width: 148px; padding: 8px 10px;
+    background: var(--fg); color: var(--surface); border-radius: 7px; font-size: 11.5px;
+    line-height: 1.7; opacity: 0; pointer-events: none; transition: opacity 0.12s;
+    box-shadow: var(--shadow-pop); z-index: 2;
+  }
+  .chart-tip b { display: block; font-family: var(--font-mono); font-size: 11px; opacity: 0.7; margin-bottom: 1px; letter-spacing: 0.02em; }
+  .chart-tip span { display: flex; justify-content: space-between; gap: 12px; }
+  .chart-tip i { font-style: normal; opacity: 0.65; }
+  .chart-legend { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; margin-top: 12px; font-size: 11.5px; color: var(--muted); }
+  .chart-legend span { display: flex; align-items: center; gap: 6px; }
+  .swatch { width: 9px; height: 9px; border-radius: 2px; display: inline-block; }
+  .swatch.solid { background: var(--accent-bar); }
+  .swatch.dashed { height: 0; border-top: 1.5px dashed var(--border-strong); border-radius: 0; }
+  .chart-dates { margin-left: auto; font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+
+  .block { margin-bottom: 22px; }
+  .block-head { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; margin-bottom: 12px; flex-wrap: wrap; }
+  .block-head h2 { font-size: 15px; }
+
+  .store-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .store-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg);
+    padding: 14px 16px 12px; cursor: pointer; text-align: left;
+    transition: border-color 0.15s, box-shadow 0.15s, transform 0.1s;
+  }
+  .store-card:hover { border-color: var(--border-strong); box-shadow: 0 2px 8px color-mix(in srgb, var(--fg) 5%, transparent); }
+  .store-card:active { transform: translateY(1px); }
+  .store-card.is-active { border-color: var(--fg); box-shadow: 0 0 0 1px var(--fg); }
+  .store-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+  .store-top h3 { font-size: 13px; font-weight: 600; letter-spacing: -0.01em; }
+  .store-cpl { display: flex; align-items: baseline; gap: 4px; }
+  .store-cpl .num { font-size: 25px; font-weight: 600; letter-spacing: -0.03em; }
+  .store-cpl .num.is-empty { color: var(--muted); }
+  .store-cpl .unit { font-size: 11px; color: var(--muted); }
+  .store-meta { font-size: 11.5px; color: var(--muted); margin-top: 3px; }
+  .spark { width: 100%; height: 28px; margin-top: 10px; display: block; }
+  .spark-area { fill: color-mix(in srgb, var(--fg) 6%, transparent); }
+  .spark-line { fill: none; stroke: color-mix(in srgb, var(--fg) 42%, transparent); stroke-width: 1.4; stroke-linejoin: round; }
+  .store-foot { font-size: 10.5px; color: var(--muted); margin-top: 7px; padding-top: 7px; border-top: 1px solid var(--border); }
+
+  /* ── 徽标 ── */
+  .pill {
+    display: inline-flex; align-items: center; gap: 4px; height: 20px; padding: 0 7px;
+    border-radius: 999px; border: 1px solid var(--border); background: var(--surface);
+    color: var(--muted); font-size: 11px; white-space: nowrap;
+  }
+  .pill-ok { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 28%, transparent); background: color-mix(in srgb, var(--ok) 7%, var(--surface)); }
+  .pill-warn { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 28%, transparent); background: color-mix(in srgb, var(--warn) 8%, var(--surface)); }
+  .pill-muted { color: var(--muted); }
+  .pill-solid { background: color-mix(in srgb, var(--fg) 90%, transparent); color: var(--surface); border-color: transparent; }
+
+  /* ── 表格 ── */
+  .ds-table { font-size: 12.5px; }
+  .ds-table th {
+    text-align: left; padding: 0 10px 9px; border-bottom: 1px solid var(--border);
+    color: var(--muted); font-weight: 500; font-size: 11px; letter-spacing: 0.04em; white-space: nowrap;
+  }
+  .ds-table td { padding: 10px; border-bottom: 1px solid color-mix(in srgb, var(--border) 65%, transparent); vertical-align: middle; }
+  .ds-table tbody tr:last-child td { border-bottom: 0; }
+  .ds-table tbody tr:hover { background: var(--bg); }
+  .ds-table .num-col { text-align: right; font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+  .ds-table th.num-col { text-align: right; }
+  .plan-name { font-weight: 500; }
+  .plan-sub { display: block; font-size: 11px; color: var(--muted); margin-top: 1px; }
+  .plan-sub .dot { margin-right: 4px; }
+  .center { text-align: center; }
+  .table-panel { padding: 16px 20px 12px; }
+  .table-scroll { overflow-x: auto; }
+  .leads-table { min-width: 660px; }
+  .leads-table td { white-space: nowrap; }
+
+  /* ── 竞价投放：账户级汇总 + 宽表，数字列统一等宽对齐 ── */
+  .bid-summary {
+    display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px;
+    background: var(--border); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); overflow: hidden; margin-bottom: 16px;
+  }
+  .bid-cell { background: var(--surface); padding: 15px 20px; }
+  .bid-cell > p { font-size: 12px; color: var(--muted); }
+  .bid-cell-num { display: flex; align-items: baseline; gap: 4px; margin-top: 3px; }
+  .bid-cell-num b {
+    font-family: var(--font-mono); font-size: 23px; font-weight: 600;
+    letter-spacing: -0.02em; font-variant-numeric: tabular-nums;
+  }
+  .bid-cell-num span { font-size: 12px; color: var(--muted); }
+  .bid-cell small { display: block; font-size: 11.5px; color: var(--muted); margin-top: 1px; }
+  .bid-table { min-width: 900px; }
+  .bid-table td { white-space: nowrap; }
+  .bid-table tfoot td {
+    padding: 11px 10px; border-top: 1px solid var(--border-strong); border-bottom: 0;
+    font-weight: 500; background: var(--bg);
+  }
+  .bid-table tfoot .num-col { font-weight: 600; }
+  .bid-note {
+    font-size: 11.5px; color: var(--muted); line-height: 1.7;
+    margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border);
+  }
+
+  /* ── 线索页 ── */
+  .toolbar { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; margin-bottom: 14px; }
+  .toolbar-left { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .search { position: relative; }
+  .search svg { position: absolute; left: 9px; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; color: var(--muted); }
+  .search input {
+    width: 216px; height: 32px; padding: 0 10px 0 29px; border: 1px solid var(--border);
+    border-radius: var(--radius); background: var(--surface); color: var(--fg); font: inherit; font-size: 12.5px;
+  }
+  .search input:focus { border-color: var(--accent); outline: 2px solid var(--accent-soft); outline-offset: 0; }
+  .search input::placeholder { color: var(--muted); }
+
+  .table-headline { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 10px; }
+  .table-headline h2 { font-size: 14px; }
+  #lead-count { font-size: 11.5px; color: var(--muted); }
+  .leads-table tbody tr { cursor: pointer; }
+  .lead-time { color: var(--muted); font-family: var(--font-mono); font-size: 11.5px; white-space: nowrap; }
+  .phone-cell { font-family: var(--font-mono); font-size: 11.5px; white-space: nowrap; }
+  .plan-cell { color: var(--muted); max-width: 190px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .chev { width: 18px; color: var(--muted); opacity: 0.45; transition: opacity 0.12s, transform 0.12s; text-align: right; }
+  .leads-table tbody tr:hover .chev { opacity: 1; transform: translateX(2px); color: var(--fg); }
+  .pager { display: flex; align-items: center; justify-content: flex-end; gap: 10px; padding: 12px 2px 2px; font-size: 11.5px; color: var(--muted); }
+  .pager button {
+    height: 26px; padding: 0 10px; border: 1px solid var(--border); border-radius: 6px;
+    background: var(--surface); font-size: 11.5px; color: var(--fg);
+  }
+  .pager button:hover:not(:disabled) { background: var(--fg-soft); }
+  .pager button:disabled { color: var(--muted); opacity: 0.5; cursor: default; }
+  .empty-row { text-align: center; color: var(--muted); padding: 34px 0 !important; font-size: 12.5px; }
+
+  /* ── 设置页：横向分区标签 + 单列内容，全局只有一层侧栏 ── */
+  .settings-wrap { display: flex; flex-direction: column; gap: 18px; max-width: 960px; }
+  .settings-tabs {
+    display: flex; align-items: center; gap: 24px; border-bottom: 1px solid var(--border);
+    overflow-x: auto; scrollbar-width: none;
+  }
+  .settings-tabs::-webkit-scrollbar { display: none; }
+  .settings-tab {
+    position: relative; display: inline-flex; align-items: center; gap: 6px; flex: none;
+    padding: 0 0 10px; border: 0; background: none; color: var(--muted);
+    font-size: 13px; white-space: nowrap; transition: color 0.12s;
+  }
+  .settings-tab:hover { color: var(--fg); }
+  .settings-tab.is-active { color: var(--fg); font-weight: 500; }
+  .settings-tab.is-active::after {
+    content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px;
+    border-radius: 2px; background: var(--fg);
+  }
+  .sn-count { font-family: var(--font-mono); font-size: 10.5px; color: var(--muted); font-weight: 400; }
+  .settings-body { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+  .settings-pane { display: flex; flex-direction: column; gap: 16px; }
+
+  .store-table { min-width: 520px; }
+  .store-table td small { display: block; font-size: 11px; color: var(--muted); margin-top: 1px; }
+  .store-table .account { font-family: var(--font-mono); font-size: 11.5px; color: var(--muted); }
+  .store-table .last-time { font-size: 11.5px; }
+  .ocean-table { min-width: 700px; }
+  .ocean-table td small { display: block; font-size: 11px; color: var(--muted); margin-top: 1px; }
+  .ocean-table .app-id { font-size: 11.5px; }
+  .acc-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+  .acc-chip {
+    display: inline-flex; align-items: center; height: 18px; padding: 0 6px;
+    border: 1px solid var(--border); border-radius: 999px; background: var(--bg);
+    font-size: 10.5px; color: var(--muted); white-space: nowrap;
+  }
+  .text-warn { color: var(--warn); }
+  .link-quiet { border: 0; background: none; padding: 0; color: var(--muted); font-size: 12px; }
+  .link-quiet:hover { color: var(--fg); text-decoration: underline; text-underline-offset: 3px; }
+  .row-actions { display: flex; gap: 4px; justify-content: flex-end; }
+  .row-actions .btn { height: 26px; padding: 0 8px; font-size: 11.5px; border-color: transparent; background: none; color: var(--muted); }
+  .row-actions .btn:hover { background: var(--fg-soft); color: var(--fg); border-color: transparent; }
+  .row-actions .btn.danger:hover { color: var(--danger); background: color-mix(in srgb, var(--danger) 7%, transparent); }
+  .add-store { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); }
+  .add-store #new-password, .add-store #new-app-secret { grid-column: 1 / -1; }
+  .add-store .btn { grid-column: 1 / -1; justify-self: start; }
+  .form-hint { font-size: 11px; color: var(--muted); line-height: 1.55; margin-top: 8px; }
+  .form-hint.is-error { color: var(--danger); }
+  .form-hint.is-ok { color: var(--ok); }
+  .form-hint.inline { margin: 0; }
+
+  .mapping-wrap { overflow-x: auto; }
+  .mapping-table .group-head { font-size: 10.5px; color: var(--fg); font-weight: 500; letter-spacing: 0.02em; padding-bottom: 4px; border-bottom: 0; }
+  .mapping-table thead tr:first-child th { border-bottom: 0; }
+  .mapping-table th small { display: block; font-family: var(--font-mono); font-size: 10px; color: var(--muted); letter-spacing: 0; text-transform: none; font-weight: 400; margin-top: 1px; }
+  .mapping-table input[type="checkbox"] { width: 15px; height: 15px; accent-color: var(--fg); cursor: pointer; }
+  .mapping-table input[type="checkbox"]:disabled { cursor: default; opacity: 0.4; }
+
+  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+  .field { display: flex; flex-direction: column; gap: 5px; }
+  .field > span { font-size: 11.5px; color: var(--muted); }
+  .readout { font-family: var(--font-mono); font-size: 12px; color: var(--fg); height: 34px; display: flex; align-items: center; }
+  .form-actions { display: flex; align-items: center; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
+
+  .switch-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 2px 0 4px; cursor: pointer; }
+  .switch-row b { display: block; font-size: 13px; font-weight: 500; }
+  .switch-row small { display: block; font-size: 11.5px; color: var(--muted); margin-top: 1px; }
+  .switch-row input { position: absolute; opacity: 0; width: 0; height: 0; }
+  .switch { width: 34px; height: 20px; border-radius: 999px; background: var(--border-strong); position: relative; flex: none; transition: background 0.15s; }
+  .switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: var(--surface); transition: transform 0.15s; box-shadow: 0 1px 2px color-mix(in srgb, var(--fg) 20%, transparent); }
+  .switch-row input:checked + .switch { background: var(--fg); }
+  .switch-row input:checked + .switch::after { transform: translateX(14px); }
+  .switch-row input:focus-visible + .switch { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .panel-note { background: var(--bg); }
+  .panel-note h2 { font-size: 13px; margin-bottom: 8px; }
+  .note-list { margin: 0; padding-left: 16px; font-size: 11.5px; color: var(--muted); line-height: 1.7; }
+  .note-list b { color: var(--fg); font-weight: 500; }
+
+  /* ── 抽屉 ── */
+  .scrim {
+    position: fixed; inset: 0; z-index: 50; background: color-mix(in srgb, var(--fg) 32%, transparent);
+    opacity: 0; pointer-events: none; transition: opacity 0.2s;
+  }
+  .scrim.is-open { opacity: 1; pointer-events: auto; }
+  .drawer {
+    position: fixed; top: 0; right: 0; bottom: 0; z-index: 60; width: 392px; max-width: 100%;
+    background: var(--surface); border-left: 1px solid var(--border); display: flex; flex-direction: column;
+    transform: translateX(102%); visibility: hidden; transition: transform 0.22s ease, visibility 0.22s;
+    box-shadow: var(--shadow-pop);
+  }
+  .drawer.is-open { transform: none; visibility: visible; }
+  .drawer-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 18px 20px 14px; border-bottom: 1px solid var(--border); }
+  .drawer-head h2 { font-size: 18px; letter-spacing: -0.015em; }
+  .drawer-body { padding: 18px 20px; overflow-y: auto; flex: 1; }
+  .drawer-status { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 14px; }
+  .phone-block { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 14px; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); }
+  .phone-block .num { font-size: 16px; letter-spacing: 0.01em; }
+  .detail-list { margin: 18px 0 0; display: grid; grid-template-columns: 88px 1fr; gap: 10px 12px; font-size: 12.5px; }
+  .detail-list dt { color: var(--muted); }
+  .detail-list dd { margin: 0; color: var(--fg); font-family: var(--font-mono); font-size: 11.5px; text-align: right; word-break: break-all; }
+  .drawer-foot { padding: 14px 20px 18px; border-top: 1px solid var(--border); }
+  .drawer-foot .btn { width: 100%; }
+
+  /* ── Toast ── */
+  .toast {
+    position: fixed; left: 50%; bottom: 26px; z-index: 80; transform: translate(-50%, 14px);
+    max-width: min(90vw, 480px); padding: 10px 16px; border-radius: 9px;
+    background: var(--fg); color: var(--surface); font-size: 12.5px; line-height: 1.5;
+    box-shadow: var(--shadow-pop); opacity: 0; pointer-events: none;
+    transition: opacity 0.18s, transform 0.18s;
+  }
+  .toast.is-on { opacity: 1; transform: translate(-50%, 0); }
+
+  /* ── 响应式：桌面优先，窄屏把侧栏收成横向导航 ── */
+  @media (max-width: 1120px) {
+    .store-grid { grid-template-columns: repeat(2, 1fr); }
+    .kpi-band { grid-template-columns: 1fr; }
+    .bid-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  @media (max-width: 980px) {
+    .settings-wrap { max-width: none; }
+    .settings-tabs { gap: 18px; }
+    .settings-tab { padding-bottom: 9px; }
+  }
+  @media (max-width: 860px) {
+    .titlebar { padding-left: 12px; }
+    .tb-status, .win-controls, .tb-version, .tb-icon { display: none; }
+    .app, body.rail .app { grid-template-columns: 1fr; align-content: start; min-height: 0; }
+    .sidebar, body.rail .sidebar {
+      position: static; height: auto; min-height: 0; align-self: start; flex-direction: row; align-items: center; gap: 12px;
+      padding: 7px 16px; border-right: 0; border-bottom: 1px solid var(--border); overflow-x: auto;
+    }
+    .nav { flex-direction: row; gap: 2px; }
+    .nav-group, body.rail .nav-group { flex-direction: row; gap: 2px; }
+    body.rail .nav-group + .nav-group { margin-top: 0; padding-top: 0; border-top: 0; }
+    .nav-label { display: none; }
+    .sidebar-foot { display: none; }
+    .nav-item, body.rail .nav-item { padding: 7px 9px; white-space: nowrap; gap: 10px; }
+    body.rail .nav-item > span { display: inline; }
+    .topbar { flex-wrap: wrap; gap: 10px; padding: 10px 16px; }
+    .top-actions { width: 100%; gap: 8px; flex-wrap: wrap; }
+    .store-filter { flex: 1 1 150px; }
+    .store-filter .control { flex: 1; min-width: 0; }
+    .top-actions .sync { margin-left: auto; }
+    .content { padding: 16px 16px 40px; }
+    .store-grid { grid-template-columns: 1fr; }
+    .kpi-side { grid-template-columns: 1fr; }
+    .kpi-side .kpi-cell { border-left: 0; border-bottom: 0; padding: 14px 20px; }
+    .kpi-side .kpi-cell + .kpi-cell { border-top: 1px solid var(--border); }
+    .plan-cell { max-width: 160px; }
+    .search { flex: 1 1 100%; }
+    .search input { width: 100%; }
+    .toolbar-left { width: 100%; }
+    .chart { height: 160px; }
+    .chart-dates { display: none; }
+    .add-store { grid-template-columns: 1fr; }
+    .add-store #new-password, .add-store #new-app-secret { grid-column: auto; }
+    .field-row { grid-template-columns: 1fr; }
+  }
+  /* 窄窗口：竞价表优先保留账户、余额、消耗、转化与成本，其余列收起避免横向溢出 */
+  @media (max-width: 700px) {
+    .bid-table { min-width: 0; }
+    .bid-table th, .bid-table td { padding: 9px 7px; }
+    .bid-table td:first-child { white-space: normal; }
+    .bid-table th:nth-child(4), .bid-table td:nth-child(4),
+    .bid-table th:nth-child(7), .bid-table td:nth-child(7) { display: none; }
+  }
+  @media (max-width: 520px) {
+    .leads-table { min-width: 0; }
+    .leads-table th:nth-child(3), .leads-table td:nth-child(3),
+    .leads-table th:nth-child(7), .leads-table td:nth-child(7) { display: none; }
+    .bid-summary { grid-template-columns: 1fr; }
+    .bid-cell { padding: 13px 16px; }
+    .bid-cell-num b { font-size: 21px; }
+    .store-table { min-width: 0; }
+    .store-table th:nth-child(3), .store-table td:nth-child(3) { display: none; }
+    .ocean-table { min-width: 0; }
+    .ocean-table th:nth-child(3), .ocean-table td:nth-child(3),
+    .ocean-table th:nth-child(5), .ocean-table td:nth-child(5) { display: none; }
+    .nav-item { padding: 7px 7px; font-size: 12px; }
+    .page-head h1 { font-size: 19px; }
+    .big-cur { font-size: 22px; }
+    .kpi-main { padding: 18px 20px; }
+    .kpi-cell { padding: 14px 20px; }
+  }
+</style>
+</head>
+<body data-view="dashboard">
+<header class="titlebar" data-od-id="titlebar">
+  <button class="tb-icon" id="rail-toggle" aria-label="收起导航" aria-pressed="false" title="收起导航（释放横向空间）">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="3.5" y="4.5" width="17" height="15" rx="2"/><path d="M9.5 4.5v15"/></svg>
+  </button>
+  <div class="tb-brand">
+    <div class="brand-mark" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"><path d="M4 19 10 5M13 19 19 5"/></svg>
+    </div>
+    <b>经销商运营台</b>
+    <span class="tb-version">v0.9.2</span>
+  </div>
+  <div class="tb-status"><span class="dot warn" id="tb-dot"></span><span id="tb-health">城西店会话失效 · 1 项待处理</span></div>
+  <div class="win-controls" data-od-id="window-controls">
+    <button class="win-btn" data-win="min" aria-label="最小化窗口">
+      <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M2 6h8"/></svg>
+    </button>
+    <button class="win-btn" data-win="max" aria-label="最大化窗口">
+      <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="2.5" y="2.5" width="7" height="7" rx="1"/></svg>
+    </button>
+    <button class="win-btn close" data-win="close" aria-label="关闭窗口">
+      <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M3 3l6 6M9 3l-6 6"/></svg>
+    </button>
+  </div>
+</header>
+<div class="app">
+  <aside class="sidebar" data-od-id="sidebar">
+    <nav class="nav" aria-label="主导航">
+      <div class="nav-group">
+        <p class="nav-label">运营</p>
+        <button class="nav-item is-active" data-view="dashboard" data-od-id="nav-dashboard" title="总览看板" aria-label="总览看板">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="3.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.5"/></svg>
+          <span>总览看板</span>
+        </button>
+        <button class="nav-item" data-view="bid" data-od-id="nav-bid" title="竞价投放" aria-label="竞价投放">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M4 19V9M9.5 19V5M15 19v-6M20.5 19V8"/></svg>
+          <span>竞价投放</span>
+        </button>
+        <button class="nav-item" data-view="leads" data-od-id="nav-leads" title="线索明细" aria-label="线索明细">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M4 6.5h16M4 12h16M4 17.5h9"/></svg>
+          <span>线索明细</span>
+        </button>
+      </div>
+      <div class="nav-group">
+        <p class="nav-label">配置</p>
+        <button class="nav-item" data-view="settings" data-od-id="nav-settings" title="设置" aria-label="设置">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M4 7h9M17 7h3M4 17h3M10 17h10"/><circle cx="15" cy="7" r="2"/><circle cx="7.5" cy="17" r="2"/></svg>
+          <span>设置</span>
+        </button>
+      </div>
+    </nav>
+
+    <div class="sidebar-foot">
+      <div class="engine" id="engine-card">
+        <div class="engine-head"><span class="dot warn" id="engine-dot"></span><span id="engine-head-text">采集引擎有异常</span></div>
+        <div class="engine-row"><span>下次自动拉取</span><b>11:00</b></div>
+        <div class="engine-row"><span>门店在线</span><b id="engine-stores">3 / 4</b></div>
+        <div class="engine-row"><span>广告账户</span><b id="engine-accounts">3 / 3</b></div>
+        <button class="engine-row engine-link" id="engine-apps-link" type="button" title="打开巨量引擎应用设置">
+          <span>巨量引擎应用</span><b id="engine-apps">2 / 3</b>
+        </button>
+        <button class="engine-alert" id="engine-detail">城西店会话已失效 →</button>
+      </div>
+      <p class="sidebar-note">演示原型 · 示例数据</p>
+      <button class="rail-status" id="rail-status" aria-label="采集状态：1 项待处理" title="采集状态：1 项待处理">
+        <span class="dot warn" id="rail-dot"></span>
+      </button>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <div class="page-head">
+        <h1 id="page-title">总览看板</h1>
+        <p id="page-sub">2026 年 10 月 21 日 周三 · 全部 4 家门店</p>
+      </div>
+      <div class="top-actions">
+        <label class="store-filter" id="store-filter-wrap">
+          <span>门店</span>
+          <select class="control" id="store-filter" aria-label="按门店筛选"></select>
+        </label>
+        <span class="sync" id="sync-state"><span class="dot ok"></span><span id="sync-text">10:42 已同步</span></span>
+        <button class="btn btn-primary" id="pull-btn" data-od-id="pull-now">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 5v6h-6"/></svg>
+          <span id="pull-label">立即拉取</span>
+        </button>
+      </div>
+    </header>
+
+    <main class="content">
+      <!-- ══ 看板 ══ -->
+      <section class="view" data-view-panel="dashboard" data-od-id="dashboard">
+        <div class="view-bar">
+          <div class="seg" id="range-seg" role="group" aria-label="时间范围">
+            <button data-range="Today" class="is-on">今日</button>
+            <button data-range="Last7">近 7 天</button>
+            <button data-range="Last30">近 30 天</button>
+            <button data-range="Custom">自定义</button>
+          </div>
+          <div class="custom-range" id="custom-range" hidden>
+            <input type="date" class="control" id="range-from" value="2026-10-01" aria-label="开始日期" />
+            <span class="dash">—</span>
+            <input type="date" class="control" id="range-to" value="2026-10-21" aria-label="结束日期" />
+            <button class="btn btn-sm" id="apply-range">应用</button>
+          </div>
+          <div class="view-meta"><span class="dot ok"></span><span id="view-meta-text">数据截至 10:42 · 示例数据</span>
+            <button class="link-quiet" id="export-dashboard">导出看板</button>
+          </div>
+        </div>
+
+        <div class="kpi-band" data-od-id="dashboard-kpi">
+          <div class="kpi-main">
+            <p class="eyebrow" id="kpi-eyebrow">今日 · 全部 4 家门店</p>
+            <div class="big-num">
+              <span class="big-cur">¥</span><span id="kpi-cpl">145.6</span><span class="big-per">/ 条</span>
+            </div>
+            <p class="kpi-label">单条线索成本</p>
+            <p class="kpi-delta" id="kpi-delta"><span class="delta-bad">↑ ¥3.2 · 2.2%</span> 较昨日</p>
+          </div>
+          <div class="kpi-side">
+            <div class="kpi-cell">
+              <p>线索量</p>
+              <div class="kpi-cell-num"><b id="kpi-leads">128</b><span>条</span></div>
+              <small id="kpi-leads-sub">较上期 +12 条</small>
+            </div>
+            <div class="kpi-cell">
+              <p>广告消耗</p>
+              <div class="kpi-cell-num"><b id="kpi-spend">18,640</b><span>元</span></div>
+              <small id="kpi-spend-sub">较上期 +6.8%</small>
+            </div>
+            <div class="kpi-cell">
+              <p>已成交</p>
+              <div class="kpi-cell-num"><b id="kpi-deals">19</b><span>条</span></div>
+              <small id="kpi-deals-sub">成交率 <span id="kpi-conv-inline">14.8</span>%</small>
+            </div>
+            <div class="kpi-cell">
+              <p>成交率</p>
+              <div class="kpi-cell-num"><b id="kpi-conv">14.8</b><span>%</span></div>
+              <small id="kpi-conv-sub">较上期 +0.6pp</small>
+            </div>
+          </div>
+        </div>
+
+        <section class="panel chart-panel" data-od-id="dashboard-trend">
+          <div class="panel-head">
+            <div>
+              <h2 id="chart-title">近 14 天线索走势</h2>
+              <p class="sub">每日新增线索量与 14 日均值，悬停查看当日消耗与成本</p>
+            </div>
+            <div class="chart-total">
+              <b id="chart-total">1,470</b>
+              <span>条 · 日均 <span id="chart-avg">105</span></span>
+            </div>
+          </div>
+          <div class="chart" id="chart">
+            <svg id="chart-svg" viewBox="0 0 760 190" preserveAspectRatio="none" role="img" aria-label="近 14 天每日新增线索量柱状图"></svg>
+            <div class="chart-tip" id="chart-tip"></div>
+          </div>
+          <div class="chart-legend">
+            <span><i class="swatch solid"></i>每日线索量</span>
+            <span><i class="swatch dashed"></i>14 日均值</span>
+            <span class="chart-dates">10 月 8 日 — 10 月 21 日</span>
+          </div>
+        </section>
+
+        <section class="block" data-od-id="dashboard-stores">
+          <div class="block-head">
+            <h2>门店表现</h2>
+            <p class="sub">点击卡片筛选全站数据；会话失效的门店会标注数据截止时间</p>
+          </div>
+          <div class="store-grid" id="store-grid"></div>
+        </section>
+      </section>
+
+      <!-- ══ 竞价投放 ══ -->
+      <section class="view" data-view-panel="bid" data-od-id="bid" hidden>
+        <div class="view-bar">
+          <div class="seg" id="bid-range" role="group" aria-label="竞价投放时间范围">
+            <button data-bid-range="Today" class="is-on">今日</button>
+            <button data-bid-range="Last7">近 7 天</button>
+            <button data-bid-range="Last30">近 30 天</button>
+          </div>
+          <div class="view-meta">
+            <span class="dot ok" id="bid-dot"></span>
+            <span id="bid-meta">巨量引擎 Marketing API · 数据截至 10:42 · 示例数据</span>
+          </div>
+        </div>
+
+        <div class="bid-summary" data-od-id="bid-summary">
+          <div class="bid-cell">
+            <p>账户余额合计</p>
+            <div class="bid-cell-num"><b id="bid-balance">18,560.50</b><span>元</span></div>
+            <small id="bid-balance-sub">3 个账户 · 1 个余额偏低</small>
+          </div>
+          <div class="bid-cell">
+            <p>消耗</p>
+            <div class="bid-cell-num"><b id="bid-spend">18,640</b><span>元</span></div>
+            <small id="bid-spend-sub">现金占比 90.6%</small>
+          </div>
+          <div class="bid-cell">
+            <p>现金消耗</p>
+            <div class="bid-cell-num"><b id="bid-cash">16,890</b><span>元</span></div>
+            <small id="bid-cash-sub">赠送与返点 ¥1,750</small>
+          </div>
+          <div class="bid-cell">
+            <p>转化数</p>
+            <div class="bid-cell-num"><b id="bid-conv">128</b><span>个</span></div>
+            <small id="bid-conv-sub">平均转化成本 ¥145.6</small>
+          </div>
+        </div>
+
+        <section class="panel table-panel" data-od-id="bid-table">
+          <div class="panel-head">
+            <div>
+              <h2>竞价投放账户</h2>
+              <p class="sub">按消耗降序 · 账户归属巨量引擎应用，与门店为多对多映射</p>
+            </div>
+            <div class="panel-actions">
+              <button class="link-quiet" id="manage-apps">管理应用与账户 →</button>
+              <button class="btn btn-sm" id="export-bid">导出竞价报表</button>
+            </div>
+          </div>
+          <div class="table-scroll">
+            <table class="ds-table bid-table">
+              <thead>
+                <tr>
+                  <th>账户信息</th>
+                  <th class="num-col">账户余额（元）</th>
+                  <th class="num-col">消耗（元）</th>
+                  <th class="num-col">现金消耗（元）</th>
+                  <th class="num-col">转化数</th>
+                  <th class="num-col">平均转化成本（元）</th>
+                  <th class="num-col">展示数</th>
+                  <th class="num-col">转化率</th>
+                </tr>
+              </thead>
+              <tbody id="bid-body"></tbody>
+              <tfoot id="bid-foot"></tfoot>
+            </table>
+          </div>
+          <p class="bid-note">现金消耗 = 消耗 × 账户现金比例（扣除赠送与返点）；转化率 = 转化数 ÷ 展示数；平均转化成本 = 消耗 ÷ 转化数。余额低于 ¥3,000 的账户以警示色标出。</p>
+        </section>
+      </section>
+
+      <!-- ══ 线索明细 ══ -->
+      <section class="view" data-view-panel="leads" data-od-id="leads" hidden>
+        <div class="toolbar">
+          <div class="toolbar-left">
+            <label class="search">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg>
+              <input id="lead-search" type="search" placeholder="搜索姓名、手机号或车型" aria-label="搜索线索" />
+            </label>
+            <select class="control" id="lead-status" aria-label="按线索状态筛选">
+              <option value="all">全部状态</option>
+              <option value="待跟进">待跟进</option>
+              <option value="已接通">已接通</option>
+              <option value="已邀约">已邀约</option>
+              <option value="已到店">已到店</option>
+              <option value="已成交">已成交</option>
+              <option value="无效">无效</option>
+            </select>
+            <div class="seg" id="period-seg" role="group" aria-label="留资时间">
+              <button data-period="Today">今日</button>
+              <button data-period="Last7" class="is-on">近 7 天</button>
+              <button data-period="All">全部</button>
+            </div>
+          </div>
+          <button class="btn" id="export-leads" data-od-id="export-leads">导出 Excel</button>
+        </div>
+
+        <div class="panel table-panel" data-od-id="leads-table">
+          <div class="table-headline">
+            <h2>线索明细</h2>
+            <span id="lead-count">共 26 条</span>
+          </div>
+          <div class="table-scroll">
+            <table class="ds-table leads-table">
+              <thead>
+                <tr>
+                  <th>留资时间</th>
+                  <th>门店</th>
+                  <th>意向车型</th>
+                  <th>客户</th>
+                  <th>手机号</th>
+                  <th>状态</th>
+                  <th>来源计划</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="lead-body"></tbody>
+            </table>
+          </div>
+          <div class="pager">
+            <span id="pager-text">第 1 / 4 页</span>
+            <button id="prev-page" disabled>上一页</button>
+            <button id="next-page">下一页</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══ 设置 ══ -->
+      <section class="view" data-view-panel="settings" data-od-id="settings" hidden>
+        <div class="settings-wrap">
+          <nav class="settings-tabs" id="settings-tabs" role="tablist" aria-label="设置分区" data-od-id="settings-nav">
+            <button class="settings-tab is-active" data-settings-tab="stores" role="tab" id="tab-stores" aria-controls="panel-stores" aria-selected="true">
+              <span>门店与账号</span><span class="sn-count" id="sn-count-stores">4</span>
+            </button>
+            <button class="settings-tab" data-settings-tab="ocean" role="tab" id="tab-ocean" aria-controls="panel-ocean" aria-selected="false">
+              <span>巨量引擎应用</span><span class="sn-count" id="sn-count-ocean">3</span>
+            </button>
+            <button class="settings-tab" data-settings-tab="mapping" role="tab" id="tab-mapping" aria-controls="panel-mapping" aria-selected="false"><span>广告账户映射</span></button>
+            <button class="settings-tab" data-settings-tab="schedule" role="tab" id="tab-schedule" aria-controls="panel-schedule" aria-selected="false"><span>采集与对账</span></button>
+            <button class="settings-tab" data-settings-tab="data" role="tab" id="tab-data" aria-controls="panel-data" aria-selected="false"><span>数据与凭证</span></button>
+          </nav>
+
+          <div class="settings-body">
+            <section class="settings-pane" data-settings-panel="stores" id="panel-stores" role="tabpanel" aria-labelledby="tab-stores">
+            <section class="panel" data-od-id="settings-stores">
+              <div class="panel-head">
+                <div>
+                  <h2>门店与巨懂车账号</h2>
+                  <p class="sub">每店一个巨懂车账号，会话失效时可自动或人工重登</p>
+                </div>
+                <span class="pill" id="store-count-pill">4 家</span>
+              </div>
+              <div class="mapping-wrap">
+                <table class="ds-table store-table">
+                  <thead>
+                    <tr>
+                      <th>门店 / 账号</th>
+                      <th>会话</th>
+                      <th>最近采集</th>
+                      <th class="num-col">操作</th>
+                    </tr>
+                  </thead>
+                  <tbody id="settings-store-body"></tbody>
+                </table>
+              </div>
+
+              <div class="add-store">
+                <input class="input" id="new-name" placeholder="门店名称，如：城北店" aria-label="门店名称" />
+                <input class="input" id="new-account" placeholder="巨懂车账号（手机号）" aria-label="巨懂车账号" />
+                <input class="input" id="new-password" type="password" placeholder="密码（可选，供自动重登）" aria-label="密码" autocomplete="new-password" />
+                <button class="btn" id="add-store">添加门店</button>
+              </div>
+              <p class="form-hint" id="add-store-hint">密码仅存系统凭证库（Windows 凭据管理器 / macOS 钥匙串），不写入业务数据库。</p>
+            </section>
+            </section>
+
+            <section class="settings-pane" data-settings-panel="mapping" id="panel-mapping" role="tabpanel" aria-labelledby="tab-mapping" hidden>
+            <section class="panel" data-od-id="settings-mapping">
+              <div class="panel-head">
+                <div>
+                  <h2>门店 ↔ 广告账户映射</h2>
+                  <p class="sub">账户按所属应用分组；多对多映射决定广告消耗如何归因到门店</p>
+                </div>
+              </div>
+              <div class="mapping-wrap">
+                <table class="ds-table mapping-table">
+                  <thead id="mapping-head"></thead>
+                  <tbody id="mapping-body"></tbody>
+                </table>
+              </div>
+              <p class="form-hint">勾选后立即保存；未映射的门店只统计线索，不计算广告消耗。应用授权失效时，其账户仍保留映射但暂停取数。</p>
+            </section>
+            </section>
+
+            <section class="settings-pane" data-settings-panel="ocean" id="panel-ocean" role="tabpanel" aria-labelledby="tab-ocean" hidden>
+              <section class="panel" data-od-id="settings-ocean">
+                <div class="panel-head">
+                  <div>
+                    <h2>巨量引擎应用</h2>
+                    <p class="sub">可接入多个应用，每个应用独立 App ID / Secret、OAuth 授权与广告账户；异常会同步到看板</p>
+                  </div>
+                  <span class="pill" id="ocean-count-pill">3 个</span>
+                </div>
+                <div class="mapping-wrap">
+                  <table class="ds-table ocean-table">
+                    <thead>
+                      <tr>
+                        <th>应用 / 主体</th>
+                        <th>App ID</th>
+                        <th>授权的广告账户</th>
+                        <th>状态</th>
+                        <th>最近授权</th>
+                        <th class="num-col">操作</th>
+                      </tr>
+                    </thead>
+                    <tbody id="ocean-body"></tbody>
+                  </table>
+                </div>
+
+                <div class="add-store add-app-form">
+                  <input class="input" id="new-app-name" placeholder="应用名称，如：城东效果应用" aria-label="应用名称" />
+                  <input class="input" id="new-app-id" placeholder="App ID（6–20 位数字）" aria-label="App ID" inputmode="numeric" />
+                  <input class="input" id="new-app-secret" type="password" placeholder="App Secret（必填，写入本地 settings 表）" aria-label="App Secret" autocomplete="new-password" />
+                  <button class="btn" id="add-app">添加应用</button>
+                </div>
+                <p class="form-hint" id="add-app-hint">App Secret 为必填，仅写入本地 settings 表；添加后点「去授权」在系统浏览器完成 OAuth，token 存系统凭证库。</p>
+              </section>
+
+              <section class="panel panel-note">
+                <h2>应用与账户的关系</h2>
+                <ul class="note-list">
+                  <li><b>一个应用</b>：对应商业开放平台的一组 App ID / Secret，可授权多个广告账户与主体。</li>
+                  <li><b>多个应用</b>：不同主体或代理商各自建应用，凭证、授权范围与有效期互不影响；任一应用失效只影响它名下的账户。</li>
+                  <li><b>账户映射</b>：已授权账户再与门店做多对多绑定，决定广告消耗如何归因；移除应用会同时解除其账户映射。</li>
+                </ul>
+              </section>
+            </section>
+
+            <section class="settings-pane" data-settings-panel="schedule" id="panel-schedule" role="tabpanel" aria-labelledby="tab-schedule" hidden>
+            <section class="panel" data-od-id="settings-schedule">
+              <div class="panel-head">
+                <div>
+                  <h2>采集调度</h2>
+                  <p class="sub">应用运行期间按间隔自动拉取</p>
+                </div>
+              </div>
+              <label class="switch-row">
+                <span>
+                  <b>自动拉取</b>
+                  <small>关闭后仅手动拉取，每日对账也停用</small>
+                </span>
+                <input type="checkbox" id="auto-pull" checked />
+                <span class="switch" aria-hidden="true"></span>
+              </label>
+              <div class="field-row">
+                <label class="field">
+                  <span>拉取间隔</span>
+                  <select class="control" id="interval">
+                    <option value="30">每 30 分钟</option>
+                    <option value="60" selected>每 1 小时</option>
+                    <option value="120">每 2 小时</option>
+                    <option value="180">每 3 小时</option>
+                  </select>
+                </label>
+                <label class="field"><span>下次执行</span><input class="input" id="next-run" value="11:00" readonly /></label>
+              </div>
+              <p class="form-hint">新门店首轮回填 90 天，之后每轮重拉最近 7 天，覆盖线索状态变更。</p>
+              <div class="form-actions"><button class="btn btn-sm" id="save-schedule">保存设置</button></div>
+            </section>
+
+            <section class="panel" data-od-id="settings-snapshot">
+              <div class="panel-head">
+                <div>
+                  <h2>对账快照</h2>
+                  <p class="sub">每日导出一次巨懂车表格，纠正增量字段漂移</p>
+                </div>
+              </div>
+              <div class="field-row">
+                <label class="field"><span>每日执行时刻</span><input class="input" id="snap-hour" type="time" value="23:00" step="3600" /></label>
+                <div class="field"><span>最近一次</span><p class="readout" id="snap-last">10-20 23:00 · 1,284 行</p></div>
+              </div>
+              <div class="form-actions">
+                <button class="btn btn-sm" id="snap-now">立即对账</button>
+                <span class="form-hint inline">按飞鱼线索 ID 合并，不产生重复线索</span>
+              </div>
+            </section>
+            </section>
+
+            <section class="settings-pane" data-settings-panel="data" id="panel-data" role="tabpanel" aria-labelledby="tab-data" hidden>
+            <section class="panel panel-note" data-od-id="settings-note">
+              <h2>数据与凭证</h2>
+              <ul class="note-list">
+                <li><b>业务数据</b>：存本地 SQLite，位于系统应用数据目录。</li>
+                <li><b>登录凭证</b>：巨懂车密码 / 会话、巨量 OAuth token 存系统凭证库。</li>
+                <li><b>巨量引擎应用</b>：App ID / Secret 存本地 settings 表，每个应用独立授权。</li>
+                <li><b>线索 ID</b>：以列表接口为主键，快照按飞鱼线索 ID 找回后合并。</li>
+                <li><b>分发</b>：为手动安装包，无自动更新与多租户。</li>
+              </ul>
+            </section>
+            </section>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer" aria-hidden="true" aria-label="线索详情">
+  <div class="drawer-head">
+    <div>
+      <p class="eyebrow">线索详情</p>
+      <h2 id="drawer-name">王先生</h2>
+    </div>
+    <button class="icon-btn" id="drawer-close" aria-label="关闭线索详情">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="m6 6 12 12M18 6 6 18"/></svg>
+    </button>
+  </div>
+  <div class="drawer-body">
+    <div class="drawer-status">
+      <span class="pill" id="drawer-status">待跟进</span>
+      <span class="meta" id="drawer-time">10-21 10:42</span>
+    </div>
+    <div class="phone-block">
+      <span class="num" id="drawer-phone">138 0000 2146</span>
+      <button class="btn btn-sm" id="copy-phone">复制</button>
+    </div>
+    <dl class="detail-list" id="drawer-details"></dl>
+  </div>
+  <div class="drawer-foot">
+    <button class="btn" id="drawer-open">在巨懂车后台查看</button>
+  </div>
+</aside>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+  "use strict";
+
+  const $ = (sel, root = document) => root.querySelector(sel);
+  const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
+
+  const fmt = (n, d = 0) =>
+    Number(n).toLocaleString("zh-CN", { minimumFractionDigits: d, maximumFractionDigits: d });
+  const money = (n) => "¥" + fmt(n, 0);
+
+  // ── 演示数据：门店 × 时间范围；月度为独立统计口径，14 天走势固定 ──
+  const STORES = [
+    {
+      id: "east", name: "城东旗舰店", account: "138 0013 8801", session: "ok", last: "10:42", backfilled: true,
+      data: {
+        Today: { leads: 46, spend: 6820, deals: 7 },
+        Last7: { leads: 286, spend: 41200, deals: 42 },
+        Last30: { leads: 1248, spend: 178400, deals: 186 },
+      },
+      trend: [4, 6, 5, 8, 7, 5, 3, 6, 9, 11, 8, 7, 9, 10],
+    },
+    {
+      id: "south", name: "城南店", account: "138 0013 8802", session: "ok", last: "10:41", backfilled: true,
+      data: {
+        Today: { leads: 32, spend: 4380, deals: 5 },
+        Last7: { leads: 198, spend: 27600, deals: 29 },
+        Last30: { leads: 866, spend: 121300, deals: 124 },
+      },
+      trend: [5, 4, 6, 5, 7, 6, 4, 5, 6, 8, 7, 6, 7, 8],
+    },
+    {
+      id: "west", name: "城西店", account: "138 0013 8803", session: "warn", last: "10-20 22:10", backfilled: true,
+      data: {
+        Today: { leads: 28, spend: 4960, deals: 3 },
+        Last7: { leads: 172, spend: 30500, deals: 21 },
+        Last30: { leads: 758, spend: 134200, deals: 98 },
+      },
+      trend: [8, 7, 5, 6, 4, 3, 5, 7, 6, 5, 4, 3, 4, 3],
+    },
+    {
+      id: "high", name: "高新店", account: "138 0013 8804", session: "ok", last: "10:40", backfilled: true,
+      data: {
+        Today: { leads: 22, spend: 2480, deals: 4 },
+        Last7: { leads: 127, spend: 15140, deals: 24 },
+        Last30: { leads: 540, spend: 64700, deals: 95 },
+      },
+      trend: [3, 3, 4, 4, 3, 2, 3, 4, 5, 4, 4, 3, 4, 5],
+    },
+  ];
+
+  const TREND = {
+    dates: ["10-08", "10-09", "10-10", "10-11", "10-12", "10-13", "10-14", "10-15", "10-16", "10-17", "10-18", "10-19", "10-20", "10-21"],
+    leads: [96, 104, 88, 112, 121, 90, 76, 84, 119, 132, 108, 97, 115, 128],
+    spend: [14100, 15200, 12900, 16400, 17800, 13200, 11100, 12300, 17400, 19300, 15800, 14200, 16800, 18640],
+  };
+
+  const DELTA = {
+    Today: { pct: -0.3, up: false, ref: "较昨日", leads: "+13 条", spend: "+11.0%", conv: "+0.9pp" },
+    Last7: { pct: -0.9, up: false, ref: "较上周", leads: "+38 条", spend: "+4.2%", conv: "+0.4pp" },
+    Last30: { pct: -0.1, up: false, ref: "较上月", leads: "−64 条", spend: "−1.9%", conv: "−0.3pp" },
+  };
+
+  const LAST7_LEADS = STORES.reduce((a, s) => a + s.data.Last7.leads, 0);
+  const LAST7_SPEND = STORES.reduce((a, s) => a + s.data.Last7.spend, 0);
+
+  // 门店筛选时按该店 7 日占比缩放全站曲线，再把当日值和周合计锁回门店口径
+  function seriesFor(storeId) {
+    if (storeId === "all") return { leads: TREND.leads, spend: TREND.spend };
+    const s = STORES.find((x) => x.id === storeId);
+    if (!s) return { leads: TREND.leads, spend: TREND.spend };
+    const lr = s.data.Last7.leads / LAST7_LEADS;
+    const sr = s.data.Last7.spend / LAST7_SPEND;
+    const leads = TREND.leads.map((v) => Math.round(v * lr));
+    const spend = TREND.spend.map((v) => Math.round(v * sr));
+    leads[13] = s.data.Today.leads;
+    spend[13] = s.data.Today.spend;
+    leads[7] += s.data.Last7.leads - leads.slice(7).reduce((a, b) => a + b, 0);
+    spend[7] += s.data.Last7.spend - spend.slice(7).reduce((a, b) => a + b, 0);
+    return { leads, spend };
+  }
+
+  const PLANS = {
+    Today: [
+      { name: "城市通勤 · 宋PLUS DM-i", acc: "brand", spend: 8240, leads: 62, state: "投放中" },
+      { name: "家庭出行 · 汉 EV", acc: "eastperf", spend: 4860, leads: 29, state: "投放中" },
+      { name: "周末试驾 · 全系", acc: "testdrive", spend: 3120, leads: 24, state: "已暂停" },
+      { name: "老客置换 · 唐 DM-p", acc: "brand", spend: 2420, leads: 13, state: "投放中" },
+    ],
+    Last7: [
+      { name: "城市通勤 · 宋PLUS DM-i", acc: "brand", spend: 51240, leads: 396, state: "投放中" },
+      { name: "家庭出行 · 汉 EV", acc: "eastperf", spend: 29860, leads: 172, state: "投放中" },
+      { name: "周末试驾 · 全系", acc: "testdrive", spend: 18340, leads: 132, state: "已暂停" },
+      { name: "老客置换 · 唐 DM-p", acc: "brand", spend: 15000, leads: 83, state: "投放中" },
+    ],
+    Last30: [
+      { name: "城市通勤 · 宋PLUS DM-i", acc: "brand", spend: 223400, leads: 1738, state: "投放中" },
+      { name: "家庭出行 · 汉 EV", acc: "eastperf", spend: 128900, leads: 748, state: "投放中" },
+      { name: "周末试驾 · 全系", acc: "testdrive", spend: 82300, leads: 566, state: "已暂停" },
+      { name: "老客置换 · 唐 DM-p", acc: "brand", spend: 64000, leads: 360, state: "投放中" },
+    ],
+  };
+
+  const LEADS = [
+    { day: 0, time: "10-21 10:42", full: "2026-10-21 10:42:18", store: "城东旗舰店", model: "宋PLUS DM-i", name: "王先生", phone: "138 0000 2146", status: "待跟进", plan: "城市通勤 · 宋PLUS DM-i", id: "4829103756", feiyu: "7392846103857291046" },
+    { day: 0, time: "10-21 10:31", full: "2026-10-21 10:31:04", store: "城南店", model: "汉 EV", name: "李女士", phone: "138 0000 3902", status: "已接通", plan: "家庭出行 · 汉 EV", id: "4829103741", feiyu: "7392846103857291031" },
+    { day: 0, time: "10-21 10:18", full: "2026-10-21 10:18:52", store: "城东旗舰店", model: "唐 DM-p", name: "赵先生", phone: "138 0000 5578", status: "已邀约", plan: "老客置换 · 唐 DM-p", id: "4829103728", feiyu: "7392846103857291018" },
+    { day: 0, time: "10-21 09:56", full: "2026-10-21 09:56:33", store: "高新店", model: "宋PLUS DM-i", name: "陈先生", phone: "138 0000 6120", status: "已到店", plan: "周末试驾 · 全系", id: "4829103712", feiyu: "7392846103857291002" },
+    { day: 0, time: "10-21 09:41", full: "2026-10-21 09:41:27", store: "城西店", model: "宋PLUS DM-i", name: "刘女士", phone: "138 0000 7385", status: "待跟进", plan: "城市通勤 · 宋PLUS DM-i", id: "4829103698", feiyu: "7392846103857290988" },
+    { day: 0, time: "10-21 09:12", full: "2026-10-21 09:12:09", store: "城东旗舰店", model: "汉 EV", name: "孙先生", phone: "138 0000 8461", status: "已成交", plan: "家庭出行 · 汉 EV", id: "4829103681", feiyu: "7392846103857290971" },
+    { day: 0, time: "10-21 08:54", full: "2026-10-21 08:54:44", store: "城南店", model: "宋PLUS DM-i", name: "周女士", phone: "138 0000 9273", status: "已接通", plan: "城市通勤 · 宋PLUS DM-i", id: "4829103664", feiyu: "7392846103857290954" },
+    { day: 0, time: "10-21 08:20", full: "2026-10-21 08:20:15", store: "高新店", model: "唐 DM-p", name: "吴先生", phone: "138 0000 1094", status: "无效", plan: "老客置换 · 唐 DM-p", id: "4829103647", feiyu: "7392846103857290937" },
+    { day: 1, time: "10-20 19:48", full: "2026-10-20 19:48:02", store: "城东旗舰店", model: "宋PLUS DM-i", name: "郑先生", phone: "138 0000 2203", status: "已邀约", plan: "周末试驾 · 全系", id: "4829103602", feiyu: "7392846103857290892" },
+    { day: 1, time: "10-20 18:12", full: "2026-10-20 18:12:37", store: "城西店", model: "汉 EV", name: "冯女士", phone: "138 0000 3315", status: "已接通", plan: "家庭出行 · 汉 EV", id: "4829103578", feiyu: "7392846103857290868" },
+    { day: 1, time: "10-20 16:30", full: "2026-10-20 16:30:41", store: "城南店", model: "宋PLUS DM-i", name: "蒋先生", phone: "138 0000 4426", status: "待跟进", plan: "城市通勤 · 宋PLUS DM-i", id: "4829103540", feiyu: "7392846103857290830" },
+    { day: 1, time: "10-20 15:06", full: "2026-10-20 15:06:19", store: "高新店", model: "宋PLUS DM-i", name: "沈女士", phone: "138 0000 5537", status: "已到店", plan: "周末试驾 · 全系", id: "4829103512", feiyu: "7392846103857290802" },
+    { day: 1, time: "10-20 13:44", full: "2026-10-20 13:44:08", store: "城东旗舰店", model: "唐 DM-p", name: "韩先生", phone: "138 0000 6648", status: "待跟进", plan: "老客置换 · 唐 DM-p", id: "4829103488", feiyu: "7392846103857290778" },
+    { day: 1, time: "10-20 11:25", full: "2026-10-20 11:25:56", store: "城西店", model: "宋PLUS DM-i", name: "杨女士", phone: "138 0000 7759", status: "已成交", plan: "城市通勤 · 宋PLUS DM-i", id: "4829103450", feiyu: "7392846103857290740" },
+    { day: 2, time: "10-19 20:02", full: "2026-10-19 20:02:14", store: "城南店", model: "汉 EV", name: "朱先生", phone: "138 0000 8860", status: "已接通", plan: "家庭出行 · 汉 EV", id: "4829103402", feiyu: "7392846103857290692" },
+    { day: 2, time: "10-19 17:39", full: "2026-10-19 17:39:45", store: "城东旗舰店", model: "宋PLUS DM-i", name: "秦女士", phone: "138 0000 9971", status: "已到店", plan: "城市通勤 · 宋PLUS DM-i", id: "4829103378", feiyu: "7392846103857290668" },
+    { day: 2, time: "10-19 15:11", full: "2026-10-19 15:11:22", store: "高新店", model: "唐 DM-p", name: "许先生", phone: "138 0001 1082", status: "待跟进", plan: "老客置换 · 唐 DM-p", id: "4829103340", feiyu: "7392846103857290630" },
+    { day: 2, time: "10-19 10:58", full: "2026-10-19 10:58:31", store: "城西店", model: "宋PLUS DM-i", name: "何女士", phone: "138 0001 2193", status: "已接通", plan: "城市通勤 · 宋PLUS DM-i", id: "4829103302", feiyu: "7392846103857290592" },
+    { day: 3, time: "10-18 18:40", full: "2026-10-18 18:40:07", store: "城东旗舰店", model: "汉 EV", name: "吕先生", phone: "138 0001 3304", status: "已成交", plan: "家庭出行 · 汉 EV", id: "4829103264", feiyu: "7392846103857290554" },
+    { day: 3, time: "10-18 14:26", full: "2026-10-18 14:26:53", store: "城南店", model: "宋PLUS DM-i", name: "施女士", phone: "138 0001 4415", status: "待跟进", plan: "城市通勤 · 宋PLUS DM-i", id: "4829103226", feiyu: "7392846103857290516" },
+    { day: 4, time: "10-17 19:15", full: "2026-10-17 19:15:38", store: "高新店", model: "宋PLUS DM-i", name: "张先生", phone: "138 0001 5526", status: "已邀约", plan: "周末试驾 · 全系", id: "4829103188", feiyu: "7392846103857290478" },
+    { day: 4, time: "10-17 11:03", full: "2026-10-17 11:03:12", store: "城西店", model: "汉 EV", name: "孔女士", phone: "138 0001 6637", status: "已接通", plan: "家庭出行 · 汉 EV", id: "4829103150", feiyu: "7392846103857290440" },
+    { day: 5, time: "10-16 16:47", full: "2026-10-16 16:47:29", store: "城东旗舰店", model: "唐 DM-p", name: "曹先生", phone: "138 0001 7748", status: "无效", plan: "老客置换 · 唐 DM-p", id: "4829103112", feiyu: "7392846103857290402" },
+    { day: 6, time: "10-15 09:28", full: "2026-10-15 09:28:16", store: "城南店", model: "宋PLUS DM-i", name: "严女士", phone: "138 0001 8859", status: "已到店", plan: "城市通勤 · 宋PLUS DM-i", id: "4829103074", feiyu: "7392846103857290364" },
+    { day: 9, time: "10-12 15:34", full: "2026-10-12 15:34:50", store: "高新店", model: "汉 EV", name: "华先生", phone: "138 0001 9960", status: "已成交", plan: "家庭出行 · 汉 EV", id: "4829103018", feiyu: "7392846103857290308" },
+    { day: 12, time: "10-09 11:20", full: "2026-10-09 11:20:05", store: "城西店", model: "宋PLUS DM-i", name: "金女士", phone: "138 0002 1071", status: "待跟进", plan: "城市通勤 · 宋PLUS DM-i", id: "4829102960", feiyu: "7392846103857290250" },
+  ];
+
+  // 广告账户归属于某个巨量引擎应用；应用移除时账户与映射一并失效
+  const AD_ACCOUNTS = [
+    { id: "brand", short: "品牌主户", adv: "1728 4402", app: "app-brand" },
+    { id: "eastperf", short: "城东效果户", adv: "1690 3318", app: "app-brand" },
+    { id: "testdrive", short: "试驾专项户", adv: "1801 7725", app: "app-drive" },
+  ];
+  const MAPPING = {
+    east: ["brand", "eastperf"],
+    south: ["brand"],
+    west: ["testdrive"],
+    high: ["testdrive", "brand"],
+  };
+
+  // 竞价投放：账户级资金与投放指标。消耗/转化由计划数据汇总，余额与现金比例来自账户接口
+  const BID_ACCOUNTS = [
+    { id: "brand", balance: 12480.5, cashRate: 0.9, cvr: 3.49 },
+    { id: "eastperf", balance: 4820, cashRate: 0.91, cvr: 3.01 },
+    { id: "testdrive", balance: 1260, cashRate: 0.917, cvr: 1.87 },
+  ];
+
+  // 巨量引擎应用：一个应用一组 OAuth 凭证，可授权多个广告账户与主体
+  const OCEAN_APPS = [
+    {
+      id: "app-brand", name: "品牌主应用", subject: "品牌市场部", appId: "184233907712",
+      secret: true, auth: "ok", accounts: ["brand", "eastperf"], lastAuth: "10-20 18:22",
+    },
+    {
+      id: "app-drive", name: "试驾专项应用", subject: "试驾项目组", appId: "179002114455",
+      secret: true, auth: "warn", accounts: ["testdrive"], lastAuth: "10-18 09:10",
+    },
+    {
+      id: "app-legacy", name: "旧版投放应用", subject: "2024 迁移前", appId: "162004889901",
+      secret: false, auth: "expired", accounts: [], lastAuth: "09-02 14:05",
+    },
+  ];
+  let pendingRemoveApp = null;
+
+  const STATE_KEY = "dealer-ops-console:v1";
+  const state = {
+    view: "dashboard", range: "Today", bidRange: "Today", store: "all", settingsTab: "stores", rail: false,
+    customFrom: "2026-10-01", customTo: "2026-10-21",
+  };
+  const leadState = { q: "", status: "all", period: "Last7", page: 0, size: 8 };
+  let currentLead = null;
+
+  // ── 持久化：仅记录视图位置，不写入任何业务数据 ──
+  function loadState() {
+    try {
+      const raw = localStorage.getItem(STATE_KEY);
+      if (raw) Object.assign(state, JSON.parse(raw));
+    } catch (_) { /* 隐私模式忽略 */ }
+    if (!["dashboard", "bid", "leads", "settings"].includes(state.view)) state.view = "dashboard";
+    if (!["Today", "Last7", "Last30", "Custom"].includes(state.range)) state.range = "Today";
+    if (!["Today", "Last7", "Last30"].includes(state.bidRange)) state.bidRange = "Today";
+    if (!["stores", "mapping", "ocean", "schedule", "data"].includes(state.settingsTab)) state.settingsTab = "stores";
+    if (state.store !== "all" && !STORES.some((s) => s.id === state.store)) state.store = "all";
+    state.rail = !!state.rail;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(state.customFrom)) state.customFrom = "2026-10-01";
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(state.customTo)) state.customTo = "2026-10-21";
+  }
+  function saveState() {
+    try { localStorage.setItem(STATE_KEY, JSON.stringify(state)); } catch (_) { /* 忽略 */ }
+  }
+
+  const RANGE_LABEL = { Today: "今日", Last7: "近 7 天", Last30: "近 30 天", Custom: "自定义" };
+  const BID_RANGE_LABEL = { Today: "今日", Last7: "近 7 天", Last30: "近 30 天" };
+  const PERIOD_LABEL = { Today: "今日", Last7: "近 7 天", All: "全部" };
+
+  function storeLabel() {
+    if (state.store === "all") return `全部 ${STORES.length} 家门店`;
+    return (STORES.find((s) => s.id === state.store) || {}).name || "全部门店";
+  }
+
+  // ── 数字滚动：切换范围时的唯一动效，克制且只作用于数字 ──
+  function setNum(el, to, decimals = 0) {
+    if (!el) return;
+    const target = Number(to) || 0;
+    const from = el.dataset.v === undefined ? 0 : Number(el.dataset.v);
+    el.dataset.v = target;
+    if (el._raf) cancelAnimationFrame(el._raf);
+    const t0 = performance.now();
+    const dur = 360;
+    const tick = (t) => {
+      const p = Math.min(1, (t - t0) / dur);
+      const e = 1 - Math.pow(1 - p, 3);
+      el.textContent = fmt(from + (target - from) * e, decimals);
+      if (p < 1) el._raf = requestAnimationFrame(tick);
+      else el._raf = null;
+    };
+    el._raf = requestAnimationFrame(tick);
+  }
+
+  // 自定义区间按近 30 天日均折算，避免把「今日」数字冒充区间合计
+  function customDays() {
+    const a = new Date(state.customFrom + "T00:00:00").getTime();
+    const b = new Date(state.customTo + "T00:00:00").getTime();
+    if (!Number.isFinite(a) || !Number.isFinite(b) || b < a) return 21;
+    return Math.max(1, Math.min(90, Math.round((b - a) / 86400000) + 1));
+  }
+  function customFactor() { return customDays() / 30; }
+  function rangeData(s) {
+    if (state.range !== "Custom") return s.data[state.range] || s.data.Today;
+    const f = customFactor();
+    return {
+      leads: Math.round(s.data.Last30.leads * f),
+      spend: Math.round(s.data.Last30.spend * f),
+      deals: Math.round(s.data.Last30.deals * f),
+    };
+  }
+
+  function sumStores(pool) {
+    return pool.reduce(
+      (acc, s) => {
+        const d = rangeData(s);
+        acc.leads += d.leads;
+        acc.spend += d.spend;
+        acc.deals += d.deals;
+        return acc;
+      },
+      { leads: 0, spend: 0, deals: 0 },
+    );
+  }
+  function sumPool() {
+    const pool = state.store === "all" ? STORES : STORES.filter((s) => s.id === state.store);
+    return sumStores(pool);
+  }
+
+  function renderKPI() {
+    const t = sumPool();
+    const cpl = t.leads ? t.spend / t.leads : 0;
+    const conv = t.leads ? (t.deals / t.leads) * 100 : 0;
+    setNum($("#kpi-cpl"), cpl, 1);
+    setNum($("#kpi-leads"), t.leads, 0);
+    setNum($("#kpi-spend"), t.spend, 0);
+    setNum($("#kpi-deals"), t.deals, 0);
+    setNum($("#kpi-conv"), conv, 1);
+
+    const scope = state.store === "all" ? `全部 ${STORES.length} 家门店` : storeLabel();
+    const rangeText = state.range === "Custom"
+      ? `${state.customFrom} 至 ${state.customTo}`
+      : RANGE_LABEL[state.range];
+    $("#kpi-eyebrow").textContent = `${rangeText} · ${scope}`;
+
+    const delta = $("#kpi-delta");
+    const leadsSub = $("#kpi-leads-sub");
+    const spendSub = $("#kpi-spend-sub");
+    const convSub = $("#kpi-conv-sub");
+    const d = DELTA[state.range] || DELTA.Today;
+
+    if (state.range === "Custom") {
+      delta.textContent = `按近 30 天日均折算 · 共 ${customDays()} 天`;
+      leadsSub.textContent = "示例区间口径";
+      spendSub.textContent = "示例区间口径";
+      convSub.textContent = "示例区间口径";
+    } else if (state.store !== "all") {
+      const all = sumStores(STORES);
+      const lShare = all.leads ? Math.round((t.leads / all.leads) * 100) : 0;
+      const sShare = all.spend ? Math.round((t.spend / all.spend) * 100) : 0;
+      delta.textContent = "所选门店口径，投放账户与全店共享";
+      leadsSub.textContent = `占全店 ${lShare}%`;
+      spendSub.textContent = `占全店 ${sShare}%`;
+      convSub.textContent = "成交 ÷ 线索";
+    } else {
+      const diff = Math.abs(cpl - cpl / (1 + d.pct / 100));
+      const cls = d.up ? "delta-bad" : "delta-good";
+      const arrow = d.up ? "↑" : "↓";
+      delta.innerHTML = `<span class="${cls}">${arrow} ¥${fmt(diff, 1)} · ${fmt(Math.abs(d.pct), 1)}%</span> ${d.ref}`;
+      leadsSub.textContent = `${d.ref} ${d.leads}`;
+      spendSub.textContent = `${d.ref} ${d.spend}`;
+      convSub.textContent = `${d.ref} ${d.conv}`;
+    }
+    $("#kpi-deals-sub").textContent = state.range === "Custom" ? "示例区间口径" : `${RANGE_LABEL[state.range]}累计`;
+
+    $("#view-meta-text").textContent = state.store === "all"
+      ? "数据截至 10:42 · 示例数据"
+      : `${storeLabel()} · 数据截至 ${(STORES.find((s) => s.id === state.store) || {}).last || "10:42"} · 示例数据`;
+  }
+
+  function statusPill(session) {
+    if (session === "ok") return '<span class="pill pill-ok"><span class="dot ok"></span>正常</span>';
+    if (session === "warn") return '<span class="pill pill-warn"><span class="dot warn"></span>会话失效</span>';
+    if (session === "none") return '<span class="pill pill-muted">未登录</span>';
+    return '<span class="pill pill-muted">未拉取</span>';
+  }
+
+  function spark(points) {
+    const w = 120, h = 26;
+    const max = Math.max(...points), min = Math.min(...points);
+    const span = max - min || 1;
+    const pts = points.map((p, i) => [
+      (i * w) / (points.length - 1),
+      h - 2 - ((p - min) / span) * (h - 7),
+    ]);
+    const line = pts.map((p, i) => `${i ? "L" : "M"}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(" ");
+    const area = `${line} L${w},${h} L0,${h} Z`;
+    return `<svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true"><path class="spark-area" d="${area}"/><path class="spark-line" d="${line}"/></svg>`;
+  }
+
+  function renderStores() {
+    const grid = $("#store-grid");
+    grid.innerHTML = STORES.map((s) => {
+      const d = rangeData(s);
+      const cpl = d.leads ? d.spend / d.leads : null;
+      const meta = d.leads ? `线索 ${d.leads} · 消耗 ${money(d.spend)}` : "尚未拉取到线索";
+      const foot =
+        s.session === "ok" ? `采集于 ${s.last}` :
+        s.session === "warn" ? `会话失效 · 数据截至 ${s.last}` : "未登录巨懂车账号";
+      return `
+        <article class="store-card ${state.store === s.id ? "is-active" : ""}" tabindex="0" role="button"
+          aria-pressed="${state.store === s.id}" data-store="${s.id}">
+          <div class="store-top">
+            <h3>${s.name}</h3>
+            ${statusPill(s.session)}
+          </div>
+          <div class="store-cpl">
+            ${cpl === null ? '<span class="num is-empty">—</span>' : `<span class="num">¥${fmt(cpl, 1)}</span><span class="unit">/ 条</span>`}
+          </div>
+          <p class="store-meta">${meta}</p>
+          ${spark(s.trend)}
+          <p class="store-foot">${foot}</p>
+        </article>`;
+    }).join("");
+
+    $$("[data-store]", grid).forEach((card) => {
+      const pick = () => {
+        const id = card.dataset.store;
+        state.store = state.store === id ? "all" : id;
+        saveState();
+        renderAll();
+      };
+      card.addEventListener("click", pick);
+      card.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pick(); }
+      });
+    });
+  }
+
+  // ── 竞价投放：按账户汇总消耗、现金消耗、转化与展示 ──
+  // 账户清单以 AD_ACCOUNTS 为准，OAuth 新授权的账户会即时进入此表；
+  // 只有同步过投放数据的账户才有余额与转化基准，未同步的显示占位且不参与合计。
+  function bidRows() {
+    const base = PLANS[state.bidRange] || PLANS.Today;
+    return AD_ACCOUNTS.map((acc) => {
+      const metric = BID_ACCOUNTS.find((b) => b.id === acc.id);
+      const plans = base.filter((p) => p.acc === acc.id);
+      const spend = plans.reduce((sum, p) => sum + p.spend, 0);
+      const conv = plans.reduce((sum, p) => sum + p.leads, 0);
+      const cvr = metric ? metric.cvr : 0;
+      // 展示数由转化数与账户基准转化率反推，保证「转化率」与展示数口径自洽
+      const impressions = cvr ? Math.round(conv / (cvr / 100)) : 0;
+      return {
+        acc,
+        app: OCEAN_APPS.find((a) => a.id === acc.app) || null,
+        synced: Boolean(metric),
+        balance: metric ? metric.balance : 0,
+        spend,
+        cash: metric ? Math.round(spend * metric.cashRate) : 0,
+        conv,
+        impressions,
+        cpa: conv ? spend / conv : 0,
+        rate: impressions ? (conv / impressions) * 100 : 0,
+      };
+    }).sort((a, b) => b.spend - a.spend);
+  }
+
+  function renderBid() {
+    const rows = bidRows();
+    const total = rows.reduce((acc, r) => {
+      acc.balance += r.balance;
+      acc.spend += r.spend;
+      acc.cash += r.cash;
+      acc.conv += r.conv;
+      acc.impressions += r.impressions;
+      return acc;
+    }, { balance: 0, spend: 0, cash: 0, conv: 0, impressions: 0 });
+    const low = rows.filter((r) => r.synced && r.balance < 3000).length;
+    const unsynced = rows.filter((r) => !r.synced).length;
+    const pending = rows.filter((r) => r.app && r.app.auth !== "ok").length;
+    const cpa = total.conv ? total.spend / total.conv : 0;
+    const rate = total.impressions ? (total.conv / total.impressions) * 100 : 0;
+    const cashShare = total.spend ? (total.cash / total.spend) * 100 : 0;
+
+    setNum($("#bid-balance"), total.balance, 2);
+    setNum($("#bid-spend"), total.spend, 0);
+    setNum($("#bid-cash"), total.cash, 0);
+    setNum($("#bid-conv"), total.conv, 0);
+    $("#bid-balance-sub").textContent = `${rows.length} 个账户 · ${low ? `${low} 个余额偏低` : "余额充足"}${unsynced ? ` · ${unsynced} 个待同步` : ""}`;
+    $("#bid-spend-sub").textContent = `现金占比 ${fmt(cashShare, 1)}%`;
+    $("#bid-cash-sub").textContent = `赠送与返点 ${money(total.spend - total.cash)}`;
+    $("#bid-conv-sub").textContent = `平均转化成本 ¥${fmt(cpa, 1)}`;
+
+    const dash = '<span class="meta">—</span>';
+    $("#bid-body").innerHTML = rows.map((r) => {
+      const appWarn = r.app && r.app.auth !== "ok";
+      const appText = r.app ? r.app.name : "应用已移除";
+      const advText = r.acc.adv || "未同步";
+      return `
+        <tr>
+          <td>
+            <span class="plan-name">${r.acc.short}</span>
+            <span class="plan-sub">${appWarn ? '<span class="dot warn"></span>' : ""}${advText} · ${appText}${appWarn ? " · 授权待恢复" : ""}${r.synced ? "" : " · 待首次同步"}</span>
+          </td>
+          <td class="num-col ${r.synced && r.balance < 3000 ? "text-warn" : ""}">${r.synced ? fmt(r.balance, 2) : dash}</td>
+          <td class="num-col">${fmt(r.spend)}</td>
+          <td class="num-col">${r.synced ? fmt(r.cash) : dash}</td>
+          <td class="num-col">${fmt(r.conv)}</td>
+          <td class="num-col">${r.conv ? `¥${fmt(r.cpa, 1)}` : dash}</td>
+          <td class="num-col">${r.impressions ? fmt(r.impressions) : dash}</td>
+          <td class="num-col">${r.impressions ? `${fmt(r.rate, 2)}%` : dash}</td>
+        </tr>`;
+    }).join("");
+
+    $("#bid-foot").innerHTML = `
+      <tr>
+        <td>合计 · ${rows.length} 个账户${unsynced ? `（${unsynced} 个待同步）` : ""}</td>
+        <td class="num-col">${fmt(total.balance, 2)}</td>
+        <td class="num-col">${fmt(total.spend)}</td>
+        <td class="num-col">${fmt(total.cash)}</td>
+        <td class="num-col">${fmt(total.conv)}</td>
+        <td class="num-col">¥${fmt(cpa, 1)}</td>
+        <td class="num-col">${fmt(total.impressions)}</td>
+        <td class="num-col">${fmt(rate, 2)}%</td>
+      </tr>`;
+
+    $("#bid-dot").className = "dot " + (pending ? "warn" : "ok");
+    $("#bid-meta").textContent = `巨量引擎 Marketing API · ${BID_RANGE_LABEL[state.bidRange]} · ${rows.length} 个账户 · 数据截至 10:42${pending ? ` · ${pending} 个应用授权待恢复` : ""} · 示例数据`;
+  }
+
+  // ── 图表：柱状填充 + 均值虚线；鼠标按列定位，不做滚动监听 ──
+  function renderChart() {
+    const svg = $("#chart-svg");
+    const series = seriesFor(state.store);
+    const W = 760, H = 190, n = series.leads.length;
+    const max = Math.max(...series.leads, 1) * 1.16;
+    const gap = 12;
+    const bw = (W - gap * (n - 1)) / n;
+    const total = series.leads.reduce((a, b) => a + b, 0);
+    const avg = total / n;
+
+    $("#chart-title").textContent = state.store === "all"
+      ? "近 14 天线索走势"
+      : `${storeLabel()} · 近 14 天线索走势`;
+    $("#chart-total").textContent = fmt(total);
+    $("#chart-avg").textContent = fmt(Math.round(avg));
+    $("#chart-tip").style.opacity = "0";
+
+    let out = "";
+    for (let i = 1; i <= 3; i++) {
+      const y = (H / 4) * i;
+      out += `<line x1="0" y1="${y}" x2="${W}" y2="${y}" stroke="var(--border)" stroke-width="1" opacity="0.55"/>`;
+    }
+    series.leads.forEach((v, i) => {
+      const h = Math.max(3, (v / max) * (H - 16));
+      const x = i * (bw + gap);
+      const y = H - h;
+      out += `<rect class="bar${i === n - 1 ? " is-peak" : ""}" data-i="${i}" x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" rx="3"/>`;
+    });
+    const avgY = H - (avg / max) * (H - 16);
+    out += `<line class="avg-line" x1="0" y1="${avgY.toFixed(1)}" x2="${W}" y2="${avgY.toFixed(1)}"/>`;
+    svg.innerHTML = out;
+  }
+
+  function bindChartHover() {
+    const chart = $("#chart");
+    const tip = $("#chart-tip");
+    const svg = $("#chart-svg");
+    const hide = () => { tip.style.opacity = "0"; $$(".bar", svg).forEach((b) => b.classList.remove("is-hover")); };
+
+    chart.addEventListener("mousemove", (e) => {
+      const series = seriesFor(state.store);
+      const rect = chart.getBoundingClientRect();
+      const ratio = Math.max(0, Math.min(0.9999, (e.clientX - rect.left) / rect.width));
+      const i = Math.floor(ratio * series.leads.length);
+      const leads = series.leads[i];
+      const spend = series.spend[i];
+      tip.innerHTML = `<b>${TREND.dates[i]}</b>
+        <span><i>线索</i>${fmt(leads)} 条</span>
+        <span><i>消耗</i>${money(spend)}</span>
+        <span><i>单条成本</i>${leads ? "¥" + fmt(spend / leads, 0) : "—"}</span>`;
+      tip.style.opacity = "1";
+      const tw = tip.offsetWidth || 148;
+      tip.style.left = `${Math.min(rect.width - tw - 2, Math.max(2, ratio * rect.width - tw / 2))}px`;
+      $$(".bar", svg).forEach((b, j) => b.classList.toggle("is-hover", j === i));
+    });
+    chart.addEventListener("mouseleave", hide);
+  }
+
+  // ── 线索表 ──
+  function filteredLeads() {
+    const q = leadState.q.trim().toLowerCase();
+    const storeName = state.store === "all" ? null : (STORES.find((s) => s.id === state.store) || {}).name;
+    const maxDay = leadState.period === "Today" ? 0 : leadState.period === "Last7" ? 6 : 999;
+    return LEADS.filter((l) => {
+      if (l.day > maxDay) return false;
+      if (storeName && l.store !== storeName) return false;
+      if (leadState.status !== "all" && l.status !== leadState.status) return false;
+      if (q) {
+        const hay = `${l.name}${l.phone.replace(/\s/g, "")}${l.model}${l.store}`.toLowerCase();
+        if (!hay.includes(q.replace(/\s/g, ""))) return false;
+      }
+      return true;
+    });
+  }
+
+  const STATUS_CLASS = {
+    待跟进: "pill-warn",
+    已接通: "",
+    已邀约: "",
+    已到店: "pill-ok",
+    已成交: "pill-solid",
+    无效: "pill-muted",
+  };
+
+  function renderLeads() {
+    const rows = filteredLeads();
+    const pages = Math.max(1, Math.ceil(rows.length / leadState.size));
+    if (leadState.page >= pages) leadState.page = pages - 1;
+    const start = leadState.page * leadState.size;
+    const view = rows.slice(start, start + leadState.size);
+
+    $("#lead-count").textContent = `共 ${rows.length} 条`;
+    $("#page-sub").textContent = `${storeLabel()} · ${PERIOD_LABEL[leadState.period]} · 共 ${rows.length} 条线索`;
+
+    const body = $("#lead-body");
+    if (!view.length) {
+      body.innerHTML = '<tr><td colspan="8" class="empty-row">没有符合条件的线索，调整筛选或先在设置页完成采集。</td></tr>';
+    } else {
+      body.innerHTML = view.map((l) => {
+        const cls = STATUS_CLASS[l.status] || "";
+        return `
+          <tr data-lead="${l.id}" tabindex="0">
+            <td class="lead-time">${l.time}</td>
+            <td>${l.store}</td>
+            <td>${l.model}</td>
+            <td>${l.name}</td>
+            <td class="phone-cell">${l.phone}</td>
+            <td><span class="pill ${cls}">${l.status}</span></td>
+            <td class="plan-cell" title="${l.plan}">${l.plan}</td>
+            <td class="chev">›</td>
+          </tr>`;
+      }).join("");
+    }
+
+    $("#pager-text").textContent = `第 ${leadState.page + 1} / ${pages} 页`;
+    $("#prev-page").disabled = leadState.page === 0;
+    $("#next-page").disabled = leadState.page + 1 >= pages;
+
+    $$("#lead-body tr[data-lead]").forEach((tr) => {
+      const open = () => openDrawer(LEADS.find((l) => l.id === tr.dataset.lead));
+      tr.addEventListener("click", open);
+      tr.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") open();
+      });
+    });
+  }
+
+  function openDrawer(lead) {
+    if (!lead) return;
+    currentLead = lead;
+    $("#drawer-name").textContent = lead.name;
+    $("#drawer-time").textContent = lead.full;
+    $("#drawer-phone").textContent = lead.phone;
+    const pill = $("#drawer-status");
+    pill.textContent = lead.status;
+    pill.className = "pill " + (STATUS_CLASS[lead.status] || "");
+    $("#drawer-details").innerHTML = [
+      ["门店", lead.store],
+      ["意向车型", lead.model],
+      ["来源计划", lead.plan],
+      ["线索 ID", lead.id],
+      ["飞鱼线索 ID", lead.feiyu],
+    ].map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("");
+    $("#drawer").classList.add("is-open");
+    $("#drawer").setAttribute("aria-hidden", "false");
+    $("#scrim").classList.add("is-open");
+  }
+
+  function closeDrawer() {
+    $("#drawer").classList.remove("is-open");
+    $("#drawer").setAttribute("aria-hidden", "true");
+    $("#scrim").classList.remove("is-open");
+    currentLead = null;
+  }
+
+  // ── 设置页 ──
+  function renderStoreFilter() {
+    const sel = $("#store-filter");
+    const opts = ['<option value="all">全部门店</option>']
+      .concat(STORES.map((s) => `<option value="${s.id}">${s.name}</option>`))
+      .join("");
+    sel.innerHTML = opts;
+    sel.value = state.store;
+  }
+
+  function renderSettingsStores() {
+    $("#store-count-pill").textContent = `${STORES.length} 家`;
+    $("#sn-count-stores").textContent = STORES.length;
+    $("#settings-store-body").innerHTML = STORES.map((s) => `
+      <tr>
+        <td>
+          <b>${s.name}</b>
+          <small class="account">${s.account}</small>
+        </td>
+        <td>${statusPill(s.session)}</td>
+        <td>
+          <span class="num last-time">${s.last || "—"}</span>
+          <small>${s.backfilled ? "已回填 90 天" : "待回填"}</small>
+        </td>
+        <td class="num-col">
+          <div class="row-actions">
+            <button class="btn" data-act="login" data-store="${s.id}">${s.session === "ok" ? "重登" : "登录"}</button>
+            <button class="btn" data-act="pull" data-store="${s.id}" ${s.session === "warn" ? "disabled" : ""}>拉取</button>
+            <button class="btn danger" data-act="remove" data-store="${s.id}">删除</button>
+          </div>
+        </td>
+      </tr>`).join("");
+
+    $$("#settings-store-body [data-act]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const s = STORES.find((x) => x.id === btn.dataset.store);
+        if (!s) return;
+        if (btn.dataset.act === "login") {
+          toast(`已打开登录窗口（${s.name}），请在窗口内完成巨懂车登录`);
+        } else if (btn.dataset.act === "pull") {
+          const old = btn.textContent;
+          btn.disabled = true;
+          btn.textContent = "拉取中";
+          setTimeout(() => {
+            s.last = "刚刚";
+            toast(`「${s.name}」入库 12 条线索`);
+            renderAll();
+          }, 900);
+          setTimeout(() => { btn.textContent = old; }, 1400);
+        } else {
+          toast("演示原型不执行删除；实际客户端会同时清除该店登录凭证");
+        }
+      });
+    });
+  }
+
+  // 映射表按应用分组：应用是凭证与授权边界，账户列随应用动态生成
+  function renderMapping() {
+    const groups = OCEAN_APPS
+      .map((app) => ({ app, accs: AD_ACCOUNTS.filter((a) => a.app === app.id) }))
+      .filter((g) => g.accs.length);
+    const flat = groups.flatMap((g) => g.accs);
+
+    if (!flat.length) {
+      $("#mapping-head").innerHTML = '<tr><th>门店</th><th class="center">暂无授权账户</th></tr>';
+      $("#mapping-body").innerHTML =
+        '<tr><td colspan="2" class="empty-row">尚无已授权的广告账户，请先在「巨量引擎应用」完成授权。</td></tr>';
+      return;
+    }
+
+    $("#mapping-head").innerHTML = `
+      <tr>
+        <th rowspan="2">门店</th>
+        ${groups.map((g) => `<th colspan="${g.accs.length}" class="center group-head">${g.app.name}</th>`).join("")}
+      </tr>
+      <tr>${flat.map((a) => `<th class="center">${a.short}<small>${a.adv}</small></th>`).join("")}</tr>`;
+
+    $("#mapping-body").innerHTML = STORES.map((s) => `
+      <tr>
+        <td>${s.name}</td>
+        ${flat.map((a) => {
+          const app = OCEAN_APPS.find((x) => x.id === a.app);
+          const paused = app && app.auth !== "ok" ? "，应用授权异常，取数暂停" : "";
+          return `
+          <td class="center">
+            <input type="checkbox" data-store="${s.id}" data-acc="${a.id}"
+              aria-label="${s.name} 关联 ${a.short}${paused}"
+              title="${paused ? "应用授权异常，映射保留但暂停取数" : `关联 ${a.short}`}"
+              ${(MAPPING[s.id] || []).includes(a.id) ? "checked" : ""} />
+          </td>`;
+        }).join("")}
+      </tr>`).join("");
+
+    $$("#mapping-body input").forEach((box) => {
+      box.addEventListener("change", () => {
+        const sid = box.dataset.store;
+        const acc = box.dataset.acc;
+        const list = MAPPING[sid] || (MAPPING[sid] = []);
+        if (box.checked) { if (!list.includes(acc)) list.push(acc); }
+        else MAPPING[sid] = list.filter((x) => x !== acc);
+        const s = STORES.find((x) => x.id === sid);
+        toast(`${s ? s.name : "门店"} 的广告账户映射已更新`);
+      });
+    });
+  }
+
+  function oceanPill(auth) {
+    if (auth === "ok") return '<span class="pill pill-ok"><span class="dot ok"></span>已授权</span>';
+    if (auth === "warn") return '<span class="pill pill-warn"><span class="dot warn"></span>部分失效</span>';
+    if (auth === "expired") return '<span class="pill pill-warn"><span class="dot warn"></span>授权过期</span>';
+    return '<span class="pill pill-muted">未授权</span>';
+  }
+
+  // 全局健康：门店会话 + 应用授权合并为同一条状态，标题栏、侧栏、看板共用
+  function healthInfo() {
+    const storeIssue = STORES.find((s) => s.session !== "ok");
+    const appIssue = OCEAN_APPS.find((a) => a.auth !== "ok");
+    const issues = [];
+    if (storeIssue) {
+      issues.push(storeIssue.session === "none" ? `${storeIssue.name}未登录` : `${storeIssue.name}会话失效`);
+    }
+    if (appIssue) {
+      issues.push(`${appIssue.name}${appIssue.auth === "expired" ? "授权过期" : "授权异常"}`);
+    }
+    return { storeIssue, appIssue, issues, target: storeIssue ? "stores" : appIssue ? "ocean" : null };
+  }
+
+  function renderHealth() {
+    const h = healthInfo();
+    const ok = h.issues.length === 0;
+    const authorized = OCEAN_APPS.filter((a) => a.auth === "ok").length;
+
+    $("#tb-dot").className = "dot " + (ok ? "ok" : "warn");
+    // 标题栏同时暴露门店与应用两类异常，避免只显示第一条而隐藏应用授权问题
+    $("#tb-health").textContent = ok
+      ? "采集正常 · 门店与应用均已连接"
+      : `${h.issues.join("、")} · ${h.issues.length} 项待处理`;
+
+    $("#engine-dot").className = "dot " + (ok ? "ok" : "warn");
+    $("#engine-head-text").textContent = ok ? "采集引擎正常" : "采集引擎有异常";
+    $("#engine-stores").textContent = `${STORES.filter((s) => s.session === "ok").length} / ${STORES.length}`;
+    $("#engine-accounts").textContent = `${AD_ACCOUNTS.length} 个`;
+    $("#engine-apps").textContent = `${authorized} / ${OCEAN_APPS.length}`;
+
+    const detail = $("#engine-detail");
+    detail.hidden = ok;
+    if (!ok) {
+      detail.textContent = `${h.issues[0]} →`;
+      detail.dataset.target = h.target;
+    }
+
+    $("#plan-source").textContent = `${AD_ACCOUNTS.length} 个广告账户 · ${authorized} / ${OCEAN_APPS.length} 个应用已授权`;
+
+    const rail = $("#rail-status");
+    rail.querySelector(".dot").className = "dot " + (ok ? "ok" : "warn");
+    const railLabel = ok ? "采集状态：正常" : `采集状态：${h.issues.length} 项待处理`;
+    rail.setAttribute("aria-label", railLabel);
+    rail.title = railLabel;
+  }
+
+  function removeOceanApp(app) {
+    const accIds = AD_ACCOUNTS.filter((a) => a.app === app.id).map((a) => a.id);
+    for (let i = AD_ACCOUNTS.length - 1; i >= 0; i--) {
+      if (AD_ACCOUNTS[i].app === app.id) AD_ACCOUNTS.splice(i, 1);
+    }
+    Object.keys(MAPPING).forEach((sid) => {
+      MAPPING[sid] = (MAPPING[sid] || []).filter((id) => !accIds.includes(id));
+    });
+    const idx = OCEAN_APPS.findIndex((a) => a.id === app.id);
+    if (idx >= 0) OCEAN_APPS.splice(idx, 1);
+    pendingRemoveApp = null;
+    renderAll();
+    toast(`已移除「${app.name}」${accIds.length ? `，同时解除 ${accIds.length} 个账户映射` : ""}；本地授权 token 已清除`);
+  }
+
+  function renderOceanApps() {
+    $("#ocean-count-pill").textContent = `${OCEAN_APPS.length} 个`;
+    $("#sn-count-ocean").textContent = OCEAN_APPS.length;
+
+    if (!OCEAN_APPS.length) {
+      $("#ocean-body").innerHTML =
+        '<tr><td colspan="6" class="empty-row">还没有巨量引擎应用。填写 App ID 与 Secret 后添加，再完成 OAuth 授权。</td></tr>';
+      return;
+    }
+
+    $("#ocean-body").innerHTML = OCEAN_APPS.map((a) => {
+      const accs = AD_ACCOUNTS.filter((x) => x.app === a.id);
+      const chips = accs.length
+        ? `<div class="acc-chips">${accs.map((x) => `<span class="acc-chip">${x.short}</span>`).join("")}</div>`
+        : '<small>尚未授权账户</small>';
+      const confirming = pendingRemoveApp === a.id;
+      const authLabel = a.auth === "ok" ? "重新授权" : a.auth === "none" ? "去授权" : "重新授权";
+      const actions = confirming
+        ? `<button class="btn danger" data-ocean-act="remove-confirm" data-app="${a.id}">确认移除</button>
+           <button class="btn" data-ocean-act="remove-cancel" data-app="${a.id}">取消</button>`
+        : `<button class="btn" data-ocean-act="auth" data-app="${a.id}">${authLabel}</button>
+           <button class="btn danger" data-ocean-act="remove" data-app="${a.id}">移除</button>`;
+      return `
+      <tr>
+        <td><b>${a.name}</b><small>${a.subject}</small></td>
+        <td><span class="num app-id">${a.appId}</span><small>${a.secret ? "Secret 已存" : '<span class="text-warn">Secret 缺失</span>'}</small></td>
+        <td>${accs.length ? `<span class="num">${accs.length}</span> 个${chips}` : chips}</td>
+        <td>${oceanPill(a.auth)}</td>
+        <td><span class="num">${a.lastAuth}</span></td>
+        <td class="num-col"><div class="row-actions">${actions}</div></td>
+      </tr>`;
+    }).join("");
+
+    $$("#ocean-body [data-ocean-act]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const app = OCEAN_APPS.find((x) => x.id === btn.dataset.app);
+        if (!app) return;
+        const act = btn.dataset.oceanAct;
+
+        if (act === "remove") {
+          pendingRemoveApp = app.id;
+          renderOceanApps();
+          return;
+        }
+        if (act === "remove-cancel") {
+          pendingRemoveApp = null;
+          renderOceanApps();
+          return;
+        }
+        if (act === "remove-confirm") {
+          removeOceanApp(app);
+          return;
+        }
+
+        if (!app.secret) {
+          toast(`「${app.name}」缺少 App Secret，请移除后重新添加并填写凭证`);
+          return;
+        }
+        btn.disabled = true;
+        btn.textContent = "授权中";
+        toast(`已打开巨量引擎 OAuth 窗口（${app.name}），请在浏览器内确认授权`);
+        setTimeout(() => {
+          app.auth = "ok";
+          app.lastAuth = "刚刚";
+          // 新应用完成 OAuth 后带回一个广告账户，让「添加 → 授权 → 映射」链路可走通
+          let added = 0;
+          if (!AD_ACCOUNTS.some((x) => x.app === app.id)) {
+            AD_ACCOUNTS.push({
+              id: "acc-" + Date.now(),
+              short: `${app.name.replace(/应用$/, "")}账户`,
+              adv: "待同步",
+              app: app.id,
+            });
+            added = 1;
+          }
+          renderAll();
+          toast(`「${app.name}」授权成功${added ? "，同步 1 个广告账户" : ""}，token 已写入系统凭证库`);
+        }, 1100);
+      });
+    });
+  }
+
+  function renderAll() {
+    renderKPI();
+    renderChart();
+    renderStores();
+    renderBid();
+    renderLeads();
+    renderStoreFilter();
+    renderSettingsStores();
+    renderMapping();
+    renderOceanApps();
+    renderHealth();
+    updatePageMeta();
+  }
+
+  function updatePageMeta() {
+    const title = { dashboard: "总览看板", bid: "竞价投放", leads: "线索明细", settings: "设置" }[state.view];
+    $("#page-title").textContent = title;
+    const subs = {
+      dashboard: `2026 年 10 月 21 日 周三 · ${storeLabel()}`,
+      bid: `${BID_RANGE_LABEL[state.bidRange]} · ${AD_ACCOUNTS.length} 个竞价账户 · 余额来自巨量引擎账户接口`,
+      leads: `${storeLabel()} · ${PERIOD_LABEL[leadState.period]} · 共 ${filteredLeads().length} 条线索`,
+      settings: "门店账号、巨量引擎应用、账户映射与采集策略",
+    };
+    $("#page-sub").textContent = subs[state.view];
+    // 竞价账户与门店是多对多，门店筛选在这里没有意义，直接收起
+    // 账户与门店是多对多映射，门店筛选对竞价账户没有意义；竞价页也不显示抓取线索的主按钮
+    $("#store-filter-wrap").hidden = state.view === "settings" || state.view === "bid";
+    $("#pull-btn").hidden = state.view === "bid";
+  }
+
+  // 设置页二级分区：横向标签只切换内容，页面始终单列，不再套第二层侧栏
+  function applySettingsTab(tab) {
+    if (!["stores", "mapping", "ocean", "schedule", "data"].includes(tab)) tab = "stores";
+    state.settingsTab = tab;
+    saveState();
+    $$(".settings-tab").forEach((b) => {
+      b.classList.toggle("is-active", b.dataset.settingsTab === tab);
+      b.setAttribute("aria-selected", String(b.dataset.settingsTab === tab));
+    });
+    $$("[data-settings-panel]").forEach((p) => { p.hidden = p.dataset.settingsPanel !== tab; });
+    pendingRemoveApp = null;
+  }
+
+  // 侧栏收起状态：桌面端把导航压成图标轨道，为宽表腾出空间
+  function applyRail() {
+    document.body.classList.toggle("rail", state.rail);
+    const btn = $("#rail-toggle");
+    const label = state.rail ? "展开导航" : "收起导航";
+    btn.setAttribute("aria-pressed", String(state.rail));
+    btn.setAttribute("aria-label", label);
+    btn.title = state.rail ? "展开导航" : "收起导航（释放横向空间）";
+  }
+
+  function switchView(view) {
+    state.view = view;
+    saveState();
+    $$(".nav-item").forEach((b) => b.classList.toggle("is-active", b.dataset.view === view));
+    $$("[data-view-panel]").forEach((p) => { p.hidden = p.dataset.viewPanel !== view; });
+    document.body.dataset.view = view;
+    if (view === "settings") applySettingsTab(state.settingsTab);
+    updatePageMeta();
+    window.scrollTo({ top: 0, behavior: "auto" });
+  }
+
+  // ── Toast ──
+  let toastTimer = null;
+  function toast(msg) {
+    const el = $("#toast");
+    el.textContent = msg;
+    el.classList.add("is-on");
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.remove("is-on"), 3200);
+  }
+
+  // 关闭自动拉取时，调度与每日对账输入同步停用，避免出现“已关闭但仍可保存”的矛盾
+  function syncAutoPullUI() {
+    const on = $("#auto-pull").checked;
+    $("#interval").disabled = !on;
+    $("#snap-hour").disabled = !on;
+    $("#save-schedule").disabled = !on;
+    $("#next-run").value = on ? "11:00" : "已暂停";
+  }
+
+  // ── 事件 ──
+  function bind() {
+    $$(".nav-item").forEach((b) => b.addEventListener("click", () => switchView(b.dataset.view)));
+    $$(".settings-tab").forEach((b) => b.addEventListener("click", () => applySettingsTab(b.dataset.settingsTab)));
+
+    // 分区标签支持方向键切换，符合桌面端键盘使用习惯
+    $$(".settings-tab").forEach((b) => b.addEventListener("keydown", (e) => {
+      if (!["ArrowRight", "ArrowLeft", "Home", "End"].includes(e.key)) return;
+      e.preventDefault();
+      const tabs = $$(".settings-tab");
+      let i = tabs.indexOf(b);
+      if (e.key === "ArrowRight") i = (i + 1) % tabs.length;
+      else if (e.key === "ArrowLeft") i = (i - 1 + tabs.length) % tabs.length;
+      else if (e.key === "Home") i = 0;
+      else i = tabs.length - 1;
+      applySettingsTab(tabs[i].dataset.settingsTab);
+      tabs[i].focus();
+    }));
+
+    $("#rail-toggle").addEventListener("click", () => {
+      state.rail = !state.rail;
+      saveState();
+      applyRail();
+    });
+
+    $("#rail-status").addEventListener("click", () => {
+      const h = healthInfo();
+      switchView("settings");
+      applySettingsTab(h.target || "stores");
+    });
+
+    $$(".win-btn").forEach((btn) => btn.addEventListener("click", () => {
+      toast(btn.dataset.win === "close"
+        ? "演示原型：实际客户端会隐藏到托盘，采集任务继续在后台运行"
+        : "演示原型：窗口控制由 Tauri 原生窗口负责");
+    }));
+
+    $("#store-filter").addEventListener("change", (e) => {
+      state.store = e.target.value;
+      leadState.page = 0;
+      saveState();
+      renderAll();
+    });
+
+    $$("#range-seg button").forEach((b) => {
+      b.addEventListener("click", () => {
+        const range = b.dataset.range;
+        state.range = range;
+        saveState();
+        $$("#range-seg button").forEach((x) => x.classList.toggle("is-on", x === b));
+        $("#custom-range").hidden = range !== "Custom";
+        renderAll();
+      });
+    });
+
+    $("#apply-range").addEventListener("click", () => {
+      const from = $("#range-from").value;
+      const to = $("#range-to").value;
+      if (!from || !to || from > to) { toast("请选择有效的开始与结束日期"); return; }
+      state.range = "Custom";
+      state.customFrom = from;
+      state.customTo = to;
+      saveState();
+      renderAll();
+      toast(`已应用 ${from} 至 ${to}，按近 30 天日均折算`);
+    });
+
+    $$("#bid-range button").forEach((b) => {
+      b.addEventListener("click", () => {
+        state.bidRange = b.dataset.bidRange;
+        saveState();
+        $$("#bid-range button").forEach((x) => x.classList.toggle("is-on", x === b));
+        renderBid();
+        updatePageMeta();
+      });
+    });
+
+    $("#export-bid").addEventListener("click", () => {
+      const rows = bidRows();
+      toast(`正在生成${BID_RANGE_LABEL[state.bidRange]}竞价报表…`);
+      setTimeout(() => toast(`已导出 ${rows.length} 个账户 · bid-2026-10-21.xlsx`), 900);
+    });
+
+    $("#pull-btn").addEventListener("click", () => {
+      const btn = $("#pull-btn");
+      const label = $("#pull-label");
+      const sync = $("#sync-state");
+      const targets = state.store === "all" ? STORES : STORES.filter((s) => s.id === state.store);
+      const okTargets = targets.filter((s) => s.session === "ok");
+      const pending = targets.length - okTargets.length;
+      btn.disabled = true;
+      label.textContent = "拉取中…";
+      sync.classList.add("is-busy");
+      $("#sync-text").textContent = `正在同步 ${targets.length} 家门店`;
+      setTimeout(() => {
+        btn.disabled = false;
+        label.textContent = "立即拉取";
+        sync.classList.remove("is-busy");
+        $("#sync-text").textContent = pending
+          ? `${okTargets.length} 家已同步 · ${pending} 家待登录`
+          : "刚刚已同步";
+        okTargets.forEach((s) => { s.last = "刚刚"; });
+        toast(`已拉取 ${okTargets.length} 家门店，入库 ${okTargets.length * 14} 条线索${pending ? " · 城西店会话失效，等待人工登录" : ""}`);
+        renderAll();
+      }, 1200);
+    });
+
+    $("#engine-detail").addEventListener("click", () => {
+      const h = healthInfo();
+      switchView("settings");
+      applySettingsTab(h.target || "stores");
+      toast(h.issues.length ? `已定位到需要处理的配置：${h.issues[0]}` : "门店与应用均已连接");
+    });
+
+    $("#engine-apps-link").addEventListener("click", () => {
+      switchView("settings");
+      applySettingsTab("ocean");
+    });
+
+    $("#manage-apps").addEventListener("click", () => {
+      switchView("settings");
+      applySettingsTab("ocean");
+    });
+
+    $("#lead-search").addEventListener("input", (e) => {
+      leadState.q = e.target.value;
+      leadState.page = 0;
+      renderLeads();
+      updatePageMeta();
+    });
+
+    $("#lead-status").addEventListener("change", (e) => {
+      leadState.status = e.target.value;
+      leadState.page = 0;
+      renderLeads();
+      updatePageMeta();
+    });
+
+    $$("#period-seg button").forEach((b) => {
+      b.addEventListener("click", () => {
+        leadState.period = b.dataset.period;
+        leadState.page = 0;
+        $$("#period-seg button").forEach((x) => x.classList.toggle("is-on", x === b));
+        renderLeads();
+        updatePageMeta();
+      });
+    });
+
+    $("#prev-page").addEventListener("click", () => { leadState.page = Math.max(0, leadState.page - 1); renderLeads(); });
+    $("#next-page").addEventListener("click", () => { leadState.page += 1; renderLeads(); });
+
+    $("#export-leads").addEventListener("click", () => {
+      const btn = $("#export-leads");
+      const rows = filteredLeads().length;
+      if (!rows) { toast("当前筛选没有可导出的线索"); return; }
+      btn.disabled = true;
+      btn.textContent = "导出中…";
+      toast("正在生成 Excel…");
+      setTimeout(() => {
+        btn.disabled = false;
+        btn.textContent = "导出 Excel";
+        toast(`已导出 ${rows} 条线索 · leads-2026-10-21.xlsx`);
+      }, 1000);
+    });
+
+    $("#export-dashboard").addEventListener("click", () => {
+      toast(`正在生成${state.range === "Custom" ? "自定义区间" : RANGE_LABEL[state.range]}看板…`);
+      setTimeout(() => toast(`已导出 dashboard-2026-10-21.xlsx`), 900);
+    });
+
+    $("#scrim").addEventListener("click", closeDrawer);
+    $("#drawer-close").addEventListener("click", closeDrawer);
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && $("#drawer").classList.contains("is-open")) closeDrawer();
+    });
+
+    $("#copy-phone").addEventListener("click", async () => {
+      if (!currentLead) return;
+      const digits = currentLead.phone.replace(/\s/g, "");
+      try {
+        await navigator.clipboard.writeText(digits);
+        toast(`已复制 ${digits}`);
+      } catch (_) {
+        toast("复制失败，请手动选择手机号");
+      }
+    });
+
+    $("#drawer-open").addEventListener("click", () => {
+      toast("演示原型：实际客户端会在系统浏览器打开巨懂车经营后台");
+    });
+
+    $("#add-store").addEventListener("click", () => {
+      const name = $("#new-name").value.trim();
+      const account = $("#new-account").value.trim();
+      const hint = $("#add-store-hint");
+      hint.classList.remove("is-error", "is-ok");
+      if (!name || !account) {
+        hint.textContent = "门店名称与巨懂车账号不能为空";
+        hint.classList.add("is-error");
+        return;
+      }
+      if (STORES.some((s) => s.account === account)) {
+        hint.textContent = "该巨懂车账号已绑定其他门店";
+        hint.classList.add("is-error");
+        return;
+      }
+      STORES.push({
+        id: "store-" + Date.now(), name, account, session: "none", last: "", backfilled: false,
+        data: { Today: { leads: 0, spend: 0, deals: 0 }, Last7: { leads: 0, spend: 0, deals: 0 }, Last30: { leads: 0, spend: 0, deals: 0 } },
+        trend: new Array(14).fill(0),
+      });
+      $("#new-name").value = "";
+      $("#new-account").value = "";
+      $("#new-password").value = "";
+      hint.textContent = "门店已添加，点「登录」完成巨懂车授权；新店首轮会回填 90 天。";
+      hint.classList.add("is-ok");
+      toast(`已添加「${name}」，等待登录巨懂车账号`);
+      renderAll();
+    });
+
+    $("#add-app").addEventListener("click", () => {
+      const name = $("#new-app-name").value.trim();
+      const appId = $("#new-app-id").value.trim();
+      const secret = $("#new-app-secret").value.trim();
+      const hint = $("#add-app-hint");
+      hint.classList.remove("is-error", "is-ok");
+      if (!name || !appId) {
+        hint.textContent = "应用名称与 App ID 不能为空";
+        hint.classList.add("is-error");
+        return;
+      }
+      if (!/^\d{6,20}$/.test(appId)) {
+        hint.textContent = "App ID 应为 6–20 位数字，可在商业开放平台应用详情中查看";
+        hint.classList.add("is-error");
+        return;
+      }
+      if (!secret) {
+        hint.textContent = "App Secret 不能为空，OAuth 授权需要完整凭证";
+        hint.classList.add("is-error");
+        return;
+      }
+      if (OCEAN_APPS.some((a) => a.appId === appId)) {
+        hint.textContent = "该 App ID 已存在于应用列表";
+        hint.classList.add("is-error");
+        return;
+      }
+      OCEAN_APPS.push({
+        id: "app-" + Date.now(), name, subject: "待授权主体", appId,
+        secret: true, auth: "none", accounts: [], lastAuth: "—",
+      });
+      $("#new-app-name").value = "";
+      $("#new-app-id").value = "";
+      $("#new-app-secret").value = "";
+      hint.textContent = "应用已添加，点「去授权」完成 OAuth；授权后可在账户映射中绑定广告账户。";
+      hint.classList.add("is-ok");
+      pendingRemoveApp = null;
+      renderAll();
+      toast(`已添加「${name}」`);
+    });
+
+    $("#auto-pull").addEventListener("change", (e) => {
+      syncAutoPullUI();
+      toast(e.target.checked ? "自动拉取已开启，下一轮调度生效" : "自动拉取已关闭，仅保留手动拉取与手动对账");
+    });
+
+    $("#save-schedule").addEventListener("click", () => {
+      const minutes = $("#interval").value;
+      toast(`调度已保存：每 ${minutes} 分钟拉取一次，下一轮生效`);
+    });
+
+    $("#snap-now").addEventListener("click", () => {
+      const btn = $("#snap-now");
+      btn.disabled = true;
+      btn.textContent = "对账中…";
+      toast("正在导出巨懂车表格并合并…");
+      setTimeout(() => {
+        btn.disabled = false;
+        btn.textContent = "立即对账";
+        $("#snap-last").textContent = "刚刚 · 1,296 行";
+        toast("对账完成：4 家门店 · 合并 1,296 行，无重复线索");
+      }, 1400);
+    });
+
+    syncAutoPullUI();
+  }
+
+  loadState();
+  applyRail();
+  // 恢复上次的视图与筛选，避免刷新后回到默认页
+  $$("#range-seg button").forEach((b) => b.classList.toggle("is-on", b.dataset.range === state.range));
+  $$("#bid-range button").forEach((b) => b.classList.toggle("is-on", b.dataset.bidRange === state.bidRange));
+  $("#custom-range").hidden = state.range !== "Custom";
+  $("#range-from").value = state.customFrom;
+  $("#range-to").value = state.customTo;
+  bindChartHover();
+  bind();
+  renderAll();
+  switchView(state.view);
+</script>
+</body>
+</html>

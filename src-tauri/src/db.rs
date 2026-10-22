@@ -30,6 +30,9 @@ impl Db {
             let _ = conn.execute_batch(sql);
         };
         add_column("ALTER TABLE leads ADD COLUMN feiyu_leads_id TEXT NOT NULL DEFAULT ''");
+        add_column(
+            "ALTER TABLE plan_reports_daily ADD COLUMN impressions INTEGER NOT NULL DEFAULT 0",
+        );
         let _ = conn
             .execute_batch("CREATE INDEX IF NOT EXISTS idx_leads_feiyu ON leads(feiyu_leads_id)");
     }
@@ -132,6 +135,7 @@ CREATE TABLE IF NOT EXISTS plan_reports_daily (
     date           TEXT NOT NULL,
     spend          REAL NOT NULL DEFAULT 0,
     conversions    INTEGER NOT NULL DEFAULT 0,
+    impressions    INTEGER NOT NULL DEFAULT 0,
     PRIMARY KEY (ad_account_id, promotion_id, date)
 );
 

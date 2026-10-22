@@ -1,6 +1,6 @@
 import { invoke } from '@tauri-apps/api/core'
 import { createApp } from 'vue'
-import './style.css'
+import './style.less'
 import App from './App.vue'
 
 // IPC 冒烟：验证 Tauri 桥可用；失败仅记录，不阻塞界面

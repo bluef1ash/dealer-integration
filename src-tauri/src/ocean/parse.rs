@@ -112,6 +112,7 @@ pub fn rows_from_item(item: &ReportItem) -> (Option<AdReportRow>, Option<PlanRep
         date: item.stat_time_day.clone(),
         spend: as_f64(&item.spend),
         conversions: as_i64(&item.conversion),
+        impressions: as_i64(&item.impression),
     });
     (ad, plan)
 }

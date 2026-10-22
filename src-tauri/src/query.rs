@@ -16,7 +16,9 @@ pub fn range_bounds(range: &Range) -> (i64, i64) {
     let today = chrono::Local::now().date_naive();
     let start_of = |d: chrono::NaiveDate| {
         chrono::Local
-            .from_utc_datetime(&d.and_hms_opt(0, 0, 0).expect("零点有效"))
+            .from_local_datetime(&d.and_hms_opt(0, 0, 0).expect("零点有效"))
+            .single()
+            .expect("零点唯一")
             .timestamp()
     };
     match range {
@@ -68,6 +70,14 @@ pub fn leads_page(conn: &Connection, filter: &LeadsFilter) -> AppResult<LeadPage
     if let Some(status) = &filter.status {
         where_sql.push_str(&format!(" AND l.status_label = ?{}", bind.len() + 1));
         bind.push(Box::new(status.clone()));
+    }
+    if let Some(q) = filter.q.as_deref().map(str::trim).filter(|q| !q.is_empty()) {
+        where_sql.push_str(&format!(
+            " AND (l.phone LIKE ?{} OR l.name LIKE ?{n} OR l.intention LIKE ?{n} OR l.promotion_name LIKE ?{n})",
+            bind.len() + 1,
+            n = bind.len() + 1
+        ));
+        bind.push(Box::new(format!("%{q}%")));
     }
     if let Some(from) = filter.from {
         where_sql.push_str(&format!(" AND l.leads_time >= ?{}", bind.len() + 1));
@@ -167,6 +177,13 @@ pub fn dashboard(conn: &Connection, range: &Range, store_id: Option<i64>) -> App
         rusqlite::params![from_date, to_date, store_id],
         |r| r.get(0),
     )?;
+    let (conversions, impressions): (i64, i64) = conn.query_row(
+        "SELECT COALESCE(SUM(conversions), 0), COALESCE(SUM(impressions), 0) FROM ad_reports_daily
+         WHERE date BETWEEN ?1 AND ?2
+           AND (?3 IS NULL OR ad_account_id IN (SELECT ad_account_id FROM store_ad_accounts WHERE store_id = ?3))",
+        rusqlite::params![from_date, to_date, store_id],
+        |r| Ok((r.get(0)?, r.get(1)?)),
+    )?;
     let cpl = if leads > 0 {
         (spend / leads as f64).round() as i64
     } else {
@@ -240,18 +257,27 @@ pub fn dashboard(conn: &Connection, range: &Range, store_id: Option<i64>) -> App
         .collect::<Result<std::collections::HashMap<_, _>, _>>()?;
     let mut plans: Vec<PlanLine> = conn
         .prepare(
-            "SELECT promotion_id, MAX(promotion_name), SUM(spend) FROM plan_reports_daily
+            "SELECT promotion_id, MAX(promotion_name), SUM(spend), SUM(conversions), SUM(impressions)
+             FROM plan_reports_daily
              WHERE (?1 IS NULL OR ad_account_id IN (SELECT ad_account_id FROM store_ad_accounts WHERE store_id = ?1))
              GROUP BY promotion_id ORDER BY 3 DESC",
         )?
         .query_map(rusqlite::params![store_id], |r| {
-            Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?, r.get::<_, f64>(2)?))
+            Ok((
+                r.get::<_, String>(0)?,
+                r.get::<_, String>(1)?,
+                r.get::<_, f64>(2)?,
+                r.get::<_, i64>(3)?,
+                r.get::<_, i64>(4)?,
+            ))
         })?
         .collect::<Result<Vec<_>, _>>()?
         .into_iter()
-        .map(|(promotion_id, promotion_name, spend)| PlanLine {
+        .map(|(promotion_id, promotion_name, spend, conversions, impressions)| PlanLine {
             state: if today_spend.get(&promotion_id).copied().unwrap_or(0.0) > 0.0 { "投放中" } else { "已暂停" },
             leads: 0,
+            conversions,
+            impressions,
             promotion_id,
             promotion_name,
             spend,
@@ -276,6 +302,8 @@ pub fn dashboard(conn: &Connection, range: &Range, store_id: Option<i64>) -> App
         cpl,
         leads,
         deals,
+        conversions,
+        impressions,
         store_cards,
         plans,
     })
