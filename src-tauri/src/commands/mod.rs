@@ -361,6 +361,32 @@ pub fn get_snapshot_hour(db: State<'_, Db>) -> Result<i32, String> {
     .map_err(err_string)
 }
 
+// ---------- 系统行为（设置页「系统设置」） ----------
+
+#[tauri::command]
+pub fn get_close_to_tray(db: State<'_, Db>) -> Result<bool, String> {
+    db.with(|conn| Ok(close_to_tray_choice(conn)?.unwrap_or(true)))
+        .map_err(err_string)
+}
+
+#[tauri::command]
+pub fn set_close_to_tray(db: State<'_, Db>, enabled: bool) -> Result<(), String> {
+    db.with_sql(|conn| {
+        settings::save_setting(
+            conn,
+            settings::KEY_CLOSE_TO_TRAY,
+            if enabled { "1" } else { "0" },
+        )
+    })
+    .map_err(err_string)
+}
+
+/// 托盘驻留三态：None=未设置（首次关闭需弹窗询问），Some=用户已选。
+/// tray 模块与命令共用同一口径
+pub fn close_to_tray_choice(conn: &rusqlite::Connection) -> crate::error::AppResult<Option<bool>> {
+    Ok(settings::get_setting(conn, settings::KEY_CLOSE_TO_TRAY)?.map(|v| v == "1"))
+}
+
 // ---------- 门店 ↔ 广告账户映射（多对多） ----------
 
 #[tauri::command]

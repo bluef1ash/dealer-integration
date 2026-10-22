@@ -47,4 +47,6 @@ export const api = {
   getSchedulerConfig: () => invoke<SchedulerConfig>('get_scheduler_config'),
   setSchedulerConfig: (enabled: boolean, intervalMinutes: number) =>
     invoke<void>('set_scheduler_config', { enabled, intervalMinutes }),
+  getCloseToTray: () => invoke<boolean>('get_close_to_tray'),
+  setCloseToTray: (enabled: boolean) => invoke<void>('set_close_to_tray', { enabled }),
 }

@@ -11,12 +11,13 @@ import { dialog } from '../utils/dialog'
 
 const { showToast } = useUiStore()
 
-type SettingsTab = 'stores' | 'mapping' | 'ocean' | 'schedule' | 'data'
+type SettingsTab = 'stores' | 'mapping' | 'ocean' | 'schedule' | 'system' | 'data'
 const TABS: Array<{ key: SettingsTab; label: string }> = [
   { key: 'stores', label: '门店与账号' },
   { key: 'mapping', label: '广告账户映射' },
   { key: 'ocean', label: '巨量引擎应用' },
   { key: 'schedule', label: '采集与对账' },
+  { key: 'system', label: '系统设置' },
   { key: 'data', label: '数据与凭证' },
 ]
 const tab = ref<SettingsTab>('stores')
@@ -39,6 +40,8 @@ const schedEnabled = ref(true)
 // n-input-number 清空时值为 null，先用可空类型承接，保存前统一校验
 const schedInterval = ref<number | null>(60)
 const snapshotHour = ref<number | null>(23)
+// 关闭时隐藏到托盘（系统设置；未记录时后端按开处理并在首次关闭时弹窗询问）
+const closeToTray = ref(true)
 
 const unlisteners: Array<() => void> = []
 
@@ -55,6 +58,7 @@ async function refresh(): Promise<void> {
     const sched = await api.getSchedulerConfig()
     schedEnabled.value = sched.enabled
     schedInterval.value = sched.interval_minutes
+    closeToTray.value = await api.getCloseToTray()
   } catch (e) {
     showToast(`读取设置失败：${e}`)
   }
@@ -155,6 +159,18 @@ async function saveHour(): Promise<void> {
   }
   await api.setSnapshotHour(hour)
   loginHint.value = `对账快照时刻已设为每天 ${hour}:00`
+}
+
+async function saveCloseToTray(enabled: boolean): Promise<void> {
+  try {
+    await api.setCloseToTray(enabled)
+    closeToTray.value = enabled
+    loginHint.value = enabled
+      ? '已开启：关闭窗口时隐藏到托盘继续采集'
+      : '已关闭：关闭窗口时直接退出应用'
+  } catch (e) {
+    loginHint.value = `保存失败：${e}`
+  }
 }
 
 async function snapshotNow(): Promise<void> {
@@ -438,6 +454,29 @@ const accountCount = computed(() => accounts.value.length)
             </tbody>
           </table>
         </div>
+      </section>
+    </section>
+
+    <!-- ── 系统设置 ── -->
+    <section v-show="tab === 'system'" class="settings-pane" role="tabpanel">
+      <section class="panel">
+        <div class="panel-head">
+          <div>
+            <h2>系统行为</h2>
+            <p class="sub">窗口关闭与托盘驻留</p>
+          </div>
+        </div>
+        <div class="switch-row">
+          <span>
+            <b>关闭时隐藏到托盘</b>
+            <small>开启：点 × 隐藏到托盘，采集调度继续后台运行；关闭：点 × 直接退出应用</small>
+          </span>
+          <n-switch :value="closeToTray" size="small" @update:value="saveCloseToTray" />
+        </div>
+        <p class="form-hint">
+          应用同时驻留系统托盘：左键点击托盘图标可随时唤起主窗口，右键菜单可显示窗口或退出。
+          首次关闭窗口时应用会弹窗询问一次，选择后记住（即本开关）。
+        </p>
       </section>
     </section>
 

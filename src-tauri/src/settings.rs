@@ -9,6 +9,8 @@ pub const KEY_SNAPSHOT_HOUR: &str = "snapshot.hour";
 pub const KEY_SCHEDULER_ENABLED: &str = "scheduler.enabled";
 /// 自动拉取间隔（分钟，默认 60）
 pub const KEY_SCHEDULER_INTERVAL: &str = "scheduler.interval_minutes";
+/// 关闭按钮隐藏到托盘（默认开；关则关闭窗口直接退出）
+pub const KEY_CLOSE_TO_TRAY: &str = "ui.close_to_tray";
 
 pub fn get_setting(conn: &Connection, key: &str) -> rusqlite::Result<Option<String>> {
     conn.query_row("SELECT value FROM settings WHERE key = ?1", [key], |row| {

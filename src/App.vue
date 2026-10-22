@@ -7,6 +7,7 @@ import { api } from './api'
 import { useUiStore, type ViewKey } from './stores/index.ts'
 import type { Store, StoreStatus } from './types'
 import { fmtTime } from './utils'
+import { dialog } from './utils/dialog'
 import { themeOverrides } from './utils/theme'
 import BidView from './views/BidView.vue'
 import DashboardView from './views/DashboardView.vue'
@@ -109,6 +110,27 @@ function onOceanPulled(): void {
   markSynced()
 }
 
+// 首次关闭主窗口：后端拦截并发事件过来，弹窗让用户选「隐藏到托盘/直接退出」，
+// 选择即保存设置（此后按设置直接执行）；点 X 或 ESC 取消则维持原状
+function askCloseToTray(): void {
+  dialog.warning({
+    title: '关闭窗口',
+    content:
+      '隐藏到托盘后应用继续在后台采集线索与报表；直接退出则停止所有采集。选择后会记住本次设置，可在 设置 → 系统设置 中修改。',
+    positiveText: '隐藏到托盘',
+    negativeText: '直接退出',
+    closable: true,
+    onPositiveClick: async () => {
+      await api.setCloseToTray(true).catch((e) => showToast(`保存设置失败：${e}`))
+      await win.hide()
+    },
+    onNegativeClick: async () => {
+      await api.setCloseToTray(false).catch((e) => showToast(`保存设置失败：${e}`))
+      await win.close()
+    },
+  })
+}
+
 onMounted(async () => {
   stores.value = await api.listStores().catch(() => [])
   await refreshStatus()
@@ -116,6 +138,7 @@ onMounted(async () => {
   window.addEventListener('ocean-pulled', onOceanPulled)
   unlisteners.push(
     await listen('login://pulled', () => refreshStatus()),
+    await listen('tray://confirm-close', askCloseToTray),
     await listen<{ store_id: number; reason: string }>('login://needs-human', (e) => {
       const name =
         statuses.value.find((s) => s.store.id === e.payload.store_id)?.store.name ??
