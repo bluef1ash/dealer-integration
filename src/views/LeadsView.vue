@@ -154,6 +154,7 @@ onMounted(async () => {
         :options="selectOptions(opts.status)"
         size="small"
         placeholder="状态"
+        clearable
         :consistent-menu-width="false"
         aria-label="按状态筛选"
         @update:value="onStatus"
@@ -163,6 +164,7 @@ onMounted(async () => {
         :options="selectOptions(opts.source_label)"
         size="small"
         placeholder="线索类型"
+        clearable
         :consistent-menu-width="false"
         aria-label="按线索类型筛选"
         @update:value="onSourceLabel"
@@ -172,6 +174,7 @@ onMounted(async () => {
         :options="selectOptions(opts.city)"
         size="small"
         placeholder="询价城市"
+        clearable
         :consistent-menu-width="false"
         aria-label="按询价城市筛选"
         @update:value="onCity"
@@ -181,6 +184,7 @@ onMounted(async () => {
         :options="selectOptions(opts.traffic_type)"
         size="small"
         placeholder="流量类型"
+        clearable
         :consistent-menu-width="false"
         aria-label="按流量类型筛选"
         @update:value="onTrafficType"
@@ -190,6 +194,7 @@ onMounted(async () => {
         :options="selectOptions(opts.conversion_status)"
         size="small"
         placeholder="转化状态"
+        clearable
         :consistent-menu-width="false"
         aria-label="按转化状态筛选"
         @update:value="onConversionStatus"
@@ -199,6 +204,7 @@ onMounted(async () => {
         :options="selectOptions(opts.scene)"
         size="small"
         placeholder="来源场景"
+        clearable
         :consistent-menu-width="false"
         aria-label="按来源场景筛选"
         @update:value="onScene"
