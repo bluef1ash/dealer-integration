@@ -151,12 +151,14 @@ onUnmounted(() => {
     </button>
     <div class="tb-brand" data-tauri-drag-region>
       <div class="brand-mark" aria-hidden="true">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round">
-          <path d="M4 19 10 5M13 19 19 5" />
+        <!-- 与应用图标同构的极简标记：灰矮柱 + 白高柱 + 蓝色圆头（复刻 icons/app-icon.png） -->
+        <svg viewBox="0 0 24 24" fill="none">
+          <path d="M7 19v-3.5a2.1 2.1 0 0 1 4.2 0V19Z" fill="#8A93A5" />
+          <path d="M12.8 19V9a2.1 2.1 0 0 1 4.2 0v10Z" fill="#F5F7FA" />
+          <circle cx="14.9" cy="7.6" r="3" fill="#2E7FE8" />
         </svg>
       </div>
       <b>经销商运营台</b>
-      <span class="tb-version">v0.1.0</span>
     </div>
     <div class="tb-status" data-tauri-drag-region>
       <span class="dot" :class="healthy ? 'ok' : 'warn'"></span>
