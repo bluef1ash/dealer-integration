@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { NButton, NInput } from 'naive-ui'
 import { computed, onMounted, ref } from 'vue'
 import { api } from '../api'
 import { useUiStore } from '../stores'
@@ -133,10 +134,15 @@ const accountSummary = computed(() =>
               <td><span class="last-time">{{ a.token_expires_at ? fmtTime(a.token_expires_at) : '—' }}</span></td>
               <td>
                 <div class="row-actions">
-                  <button class="btn" :disabled="authorizingId === a.id" @click="authorize(a)">
+                  <n-button
+                    quaternary
+                    size="tiny"
+                    :disabled="authorizingId === a.id"
+                    @click="authorize(a)"
+                  >
                     {{ authorizingId === a.id ? '授权中…' : a.has_token ? '重新授权' : '去授权' }}
-                  </button>
-                  <button class="btn danger" @click="removeApp(a)">删除</button>
+                  </n-button>
+                  <n-button quaternary size="tiny" class="danger" @click="removeApp(a)">删除</n-button>
                 </div>
               </td>
             </tr>
@@ -148,25 +154,22 @@ const accountSummary = computed(() =>
       </div>
 
       <div class="add-store">
-        <input v-model="newName" class="input" placeholder="应用名称，如：主应用" aria-label="应用名称" />
-        <input
-          v-model="newAppId"
-          class="input"
+        <n-input v-model:value="newName" placeholder="应用名称，如：主应用" aria-label="应用名称" />
+        <n-input
+          v-model:value="newAppId"
           placeholder="App ID（数字）"
           aria-label="App ID"
           autocomplete="off"
-          spellcheck="false"
         />
-        <input
-          v-model="newSecret"
-          class="input span-2"
+        <n-input
+          v-model:value="newSecret"
+          class="span-2"
           type="password"
           placeholder="App Secret"
           aria-label="App Secret"
           autocomplete="new-password"
-          spellcheck="false"
         />
-        <button class="btn" :disabled="adding" @click="addApp">{{ adding ? '添加中…' : '添加应用' }}</button>
+        <n-button :disabled="adding" @click="addApp">{{ adding ? '添加中…' : '添加应用' }}</n-button>
       </div>
       <p class="form-hint">
         凭证与 token 均存本地 SQLite（跨平台随库迁移）；OAuth 回调本机 127.0.0.1:1720。

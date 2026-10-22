@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { NButton, NDatePicker } from 'naive-ui'
 import { computed, onMounted, ref, watch } from 'vue'
 import { api } from '../api'
 import { useUiStore } from '../stores'
@@ -173,10 +174,24 @@ onMounted(load)
         </button>
       </div>
       <div v-if="rangeKey === 'Custom'" class="custom-range">
-        <input v-model="customFrom" type="date" class="control" aria-label="开始日期" />
+        <n-date-picker
+          :formatted-value="customFrom"
+          value-format="yyyy-MM-dd"
+          size="small"
+          :clearable="false"
+          aria-label="开始日期"
+          @update:formatted-value="customFrom = $event ?? ''"
+        />
         <span class="dash">—</span>
-        <input v-model="customTo" type="date" class="control" aria-label="结束日期" />
-        <button class="btn btn-sm" @click="load">应用</button>
+        <n-date-picker
+          :formatted-value="customTo"
+          value-format="yyyy-MM-dd"
+          size="small"
+          :clearable="false"
+          aria-label="结束日期"
+          @update:formatted-value="customTo = $event ?? ''"
+        />
+        <n-button size="small" @click="load">应用</n-button>
       </div>
       <div class="view-meta">
         <span class="dot" :class="lastSuccess ? 'ok' : 'warn'"></span>

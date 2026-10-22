@@ -624,60 +624,6 @@ body.rail .rail-status {
   }
 }
 
-.control {
-  height: 32px;
-  padding: 0 9px;
-  border: 1px solid var(--border);
-  border-radius: @radius;
-  background: var(--surface);
-  color: var(--fg);
-  font: inherit;
-  font-size: 12.5px;
-
-  &:hover {
-    border-color: var(--border-strong);
-  }
-
-  &:disabled {
-    opacity: 0.55;
-    cursor: default;
-    background: var(--bg);
-  }
-}
-
-.input {
-  width: 100%;
-  height: 34px;
-  padding: 0 11px;
-  border: 1px solid var(--border);
-  border-radius: @radius;
-  background: var(--surface);
-  color: var(--fg);
-  font: inherit;
-  font-size: 13px;
-
-  &:focus {
-    border-color: var(--accent);
-    outline: 2px solid var(--accent-soft);
-    outline-offset: 0;
-  }
-
-  &::placeholder {
-    color: var(--muted);
-  }
-
-  &[readonly] {
-    background: var(--bg);
-    color: var(--muted);
-  }
-
-  &:disabled {
-    opacity: 0.55;
-    background: var(--bg);
-    cursor: default;
-  }
-}
-
 .seg {
   display: inline-flex;
   padding: 3px;
@@ -1408,38 +1354,12 @@ body.rail .rail-status {
 }
 
 .search {
-  position: relative;
+  width: 216px;
 
   svg {
-    position: absolute;
-    left: 9px;
-    top: 50%;
-    transform: translateY(-50%);
     width: 14px;
     height: 14px;
     color: var(--muted);
-  }
-
-  input {
-    width: 216px;
-    height: 32px;
-    padding: 0 10px 0 29px;
-    border: 1px solid var(--border);
-    border-radius: @radius;
-    background: var(--surface);
-    color: var(--fg);
-    font: inherit;
-    font-size: 12.5px;
-
-    &:focus {
-      border-color: var(--accent);
-      outline: 2px solid var(--accent-soft);
-      outline-offset: 0;
-    }
-
-    &::placeholder {
-      color: var(--muted);
-    }
   }
 }
 
@@ -1606,24 +1526,10 @@ body.rail .rail-status {
   gap: 4px;
   justify-content: flex-end;
 
-  .btn {
-    height: 26px;
-    padding: 0 8px;
-    font-size: 11.5px;
-    border-color: transparent;
-    background: none;
-    color: var(--muted);
-
-    &:hover {
-      background: var(--fg-soft);
-      color: var(--fg);
-      border-color: transparent;
-    }
-
-    &.danger:hover {
-      color: var(--danger);
-      background: color-mix(in srgb, var(--danger) 7%, transparent);
-    }
+  // danger 款：静默灰，悬停转危险色（主题层只配了中性幽灵款，这里单独覆盖）
+  .n-button.danger:hover {
+    color: var(--danger);
+    background: color-mix(in srgb, var(--danger) 7%, transparent);
   }
 }
 
@@ -1639,7 +1545,7 @@ body.rail .rail-status {
     grid-column: 1 / -1;
   }
 
-  .btn {
+  .n-button {
     grid-column: 1 / -1;
     justify-self: start;
   }
@@ -1735,7 +1641,6 @@ body.rail .rail-status {
   justify-content: space-between;
   gap: 14px;
   padding: 2px 0 4px;
-  cursor: pointer;
 
   b {
     display: block;
@@ -1750,48 +1655,11 @@ body.rail .rail-status {
     margin-top: 1px;
   }
 
-  input {
-    position: absolute;
-    opacity: 0;
-    width: 0;
-    height: 0;
+  // n-switch 尺寸对齐原自绘开关（34x20）
+  .n-switch {
+    width: 34px;
+    height: 20px;
   }
-}
-
-.switch {
-  width: 34px;
-  height: 20px;
-  border-radius: 999px;
-  background: var(--border-strong);
-  position: relative;
-  flex: none;
-  transition: background 0.15s;
-
-  &::after {
-    content: '';
-    position: absolute;
-    top: 2px;
-    left: 2px;
-    width: 16px;
-    height: 16px;
-    border-radius: 50%;
-    background: var(--surface);
-    transition: transform 0.15s;
-    box-shadow: 0 1px 2px color-mix(in srgb, var(--fg) 20%, transparent);
-  }
-}
-
-.switch-row input:checked + .switch {
-  background: var(--fg);
-
-  &::after {
-    transform: translateX(14px);
-  }
-}
-
-.switch-row input:focus-visible + .switch {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
 }
 
 .panel-note {
@@ -2080,10 +1948,7 @@ body.rail .rail-status {
 
   .search {
     flex: 1 1 100%;
-
-    input {
-      width: 100%;
-    }
+    width: 100%;
   }
 
   .add-store {
@@ -2092,5 +1957,15 @@ body.rail .rail-status {
 
   .field-row {
     grid-template-columns: 1fr;
+  }
+}
+
+// ── naive-ui 对齐层：主题令牌（src/utils/theme.ts）之外的局部对齐 ──
+.n-button .n-button__content {
+  gap: 7px;
+
+  svg {
+    width: 15px;
+    height: 15px;
   }
 }

@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { listen } from '@tauri-apps/api/event'
 import { getCurrentWindow } from '@tauri-apps/api/window'
+import { dateZhCN, NButton, NConfigProvider, NSelect, NTooltip, zhCN } from 'naive-ui'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { api } from './api'
 import { useUiStore, type ViewKey } from './stores/index.ts'
 import type { PullOutcome, Store, StoreStatus } from './types'
 import { fmtTime } from './utils'
+import { themeOverrides } from './utils/theme'
 import BidView from './views/BidView.vue'
 import DashboardView from './views/DashboardView.vue'
 import LeadsView from './views/LeadsView.vue'
@@ -68,6 +70,11 @@ const healthText = computed(() => {
   return `${bad.map((s) => s.store.name).join('、')} 拉取失败 · ${bad.length} 项待处理`
 })
 const onlineStores = computed(() => statuses.value.filter((s) => s.has_session).length)
+// n-select 的 option 不接受 null，用 0 作「全部」哨兵，读写处与 storeId 的 null 语义互转
+const storeOptions = computed(() => [
+  { label: '全部门店', value: 0 },
+  ...stores.value.map((s) => ({ label: s.name, value: s.id })),
+])
 const pageHead = computed(() => {
   const scope =
     ui.storeId === null ? '全部门店' : (stores.value.find((s) => s.id === ui.storeId)?.name ?? '')
@@ -133,6 +140,7 @@ onUnmounted(() => {
 </script>
 
 <template>
+  <n-config-provider :theme-overrides="themeOverrides" :locale="zhCN" :date-locale="dateZhCN">
   <header class="titlebar" data-tauri-drag-region>
     <button
       class="tb-icon"
@@ -179,19 +187,27 @@ onUnmounted(() => {
       <nav class="nav" aria-label="主导航">
         <div v-for="g in NAV" :key="g.group" class="nav-group">
           <p class="nav-label">{{ g.group }}</p>
-          <button
+          <n-tooltip
             v-for="item in g.items"
             :key="item.key"
-            class="nav-item"
-            :class="{ 'is-active': ui.view === item.key }"
-            :title="item.label"
-            @click="ui.view = item.key"
+            trigger="hover"
+            placement="right"
+            :show-arrow="false"
           >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
-              <path :d="item.icon" />
-            </svg>
-            <span>{{ item.label }}</span>
-          </button>
+            <template #trigger>
+              <button
+                class="nav-item"
+                :class="{ 'is-active': ui.view === item.key }"
+                @click="ui.view = item.key"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+                  <path :d="item.icon" />
+                </svg>
+                <span>{{ item.label }}</span>
+              </button>
+            </template>
+            {{ item.label }}
+          </n-tooltip>
         </div>
       </nav>
 
@@ -211,9 +227,14 @@ onUnmounted(() => {
             {{ statuses.find((s) => s.last_error)?.store.name }} 拉取失败 →
           </button>
         </div>
-        <button class="rail-status" :aria-label="healthText" :title="healthText" @click="ui.rail = false">
-          <span class="dot" :class="healthy ? 'ok' : 'warn'"></span>
-        </button>
+        <n-tooltip trigger="hover" placement="right" :show-arrow="false">
+          <template #trigger>
+            <button class="rail-status" :aria-label="healthText" @click="ui.rail = false">
+              <span class="dot" :class="healthy ? 'ok' : 'warn'"></span>
+            </button>
+          </template>
+          {{ healthText }}
+        </n-tooltip>
       </div>
     </aside>
 
@@ -224,23 +245,31 @@ onUnmounted(() => {
           <p>{{ pageHead.sub }}</p>
         </div>
         <div class="top-actions">
-          <label class="store-filter">
+          <div class="store-filter">
             <span>门店</span>
-            <select v-model.number="ui.storeId" class="control" aria-label="按门店筛选">
-              <option :value="null">全部门店</option>
-              <option v-for="s in stores" :key="s.id" :value="s.id">{{ s.name }}</option>
-            </select>
-          </label>
+            <n-select
+              :value="ui.storeId ?? 0"
+              :options="storeOptions"
+              :consistent-menu-width="false"
+              aria-label="按门店筛选"
+              @update:value="ui.storeId = $event || null"
+            />
+          </div>
           <span class="sync" :class="{ 'is-busy': pulling }">
             <span class="dot" :class="pulling ? 'warn' : 'ok'"></span>
             <span>{{ syncText }}</span>
           </span>
-          <button v-if="ui.view !== 'settings'" class="btn btn-primary" :disabled="pulling" @click="pullNow">
+          <n-button
+            v-if="ui.view !== 'settings'"
+            type="primary"
+            :disabled="pulling"
+            @click="pullNow"
+          >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
               <path d="M20 11a8 8 0 1 0-2.3 5.7M20 5v6h-6" />
             </svg>
             <span>{{ pulling ? '拉取中…' : '立即拉取' }}</span>
-          </button>
+          </n-button>
         </div>
       </header>
 
@@ -254,4 +283,5 @@ onUnmounted(() => {
   </div>
 
   <div class="toast" :class="{ 'is-on': ui.toast }" role="status" aria-live="polite">{{ ui.toast }}</div>
+  </n-config-provider>
 </template>

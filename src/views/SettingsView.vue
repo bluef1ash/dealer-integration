@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { listen } from '@tauri-apps/api/event'
+import { NButton, NCheckbox, NInput, NInputNumber, NSwitch, NTooltip } from 'naive-ui'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { api } from '../api'
 import OceanAppsPanel from '../components/OceanAppsPanel.vue'
@@ -35,8 +36,9 @@ const newPassword = ref('')
 const adding = ref(false)
 
 const schedEnabled = ref(true)
-const schedInterval = ref(60)
-const snapshotHour = ref(23)
+// n-input-number 清空时值为 null，先用可空类型承接，保存前统一校验
+const schedInterval = ref<number | null>(60)
+const snapshotHour = ref<number | null>(23)
 
 const unlisteners: Array<() => void> = []
 
@@ -129,19 +131,16 @@ async function toggleMapping(s: StoreStatus, accountId: string, checked: boolean
 }
 
 async function saveScheduler(): Promise<void> {
-  // v-model.number 清空输入时得到空串，先做前端校验避免把非数字发给后端
-  if (
-    !Number.isInteger(schedInterval.value) ||
-    schedInterval.value < 15 ||
-    schedInterval.value > 1440
-  ) {
+  // 清空或非整数输入不发请求（后端还有 15-1440 校验兜底）
+  const interval = schedInterval.value
+  if (interval === null || !Number.isInteger(interval) || interval < 15 || interval > 1440) {
     loginHint.value = '拉取间隔须为 15-1440 之间的整数分钟'
     return
   }
   try {
-    await api.setSchedulerConfig(schedEnabled.value, schedInterval.value)
+    await api.setSchedulerConfig(schedEnabled.value, interval)
     loginHint.value = schedEnabled.value
-      ? `自动拉取已开启，${schedInterval.value} 分钟一次（下一轮生效）`
+      ? `自动拉取已开启，${interval} 分钟一次（下一轮生效）`
       : '自动拉取已关闭，仅手动拉取'
   } catch (e) {
     loginHint.value = `保存失败：${e}`
@@ -149,8 +148,13 @@ async function saveScheduler(): Promise<void> {
 }
 
 async function saveHour(): Promise<void> {
-  await api.setSnapshotHour(snapshotHour.value)
-  loginHint.value = `对账快照时刻已设为每天 ${snapshotHour.value}:00`
+  const hour = snapshotHour.value
+  if (hour === null) {
+    loginHint.value = '请先填写执行时刻（0-23 点）'
+    return
+  }
+  await api.setSnapshotHour(hour)
+  loginHint.value = `对账快照时刻已设为每天 ${hour}:00`
 }
 
 async function snapshotNow(): Promise<void> {
@@ -257,19 +261,31 @@ const accountCount = computed(() => accounts.value.length)
                 </td>
                 <td>
                   <span v-if="!s.has_session" class="pill pill-muted">未登录</span>
-                  <span v-else-if="s.last_error" class="pill pill-warn" :title="s.last_error">
-                    <span class="dot warn"></span>拉取失败
-                  </span>
+                  <n-tooltip v-else-if="s.last_error" trigger="hover" :show-arrow="false">
+                    <template #trigger>
+                      <span class="pill pill-warn"><span class="dot warn"></span>拉取失败</span>
+                    </template>
+                    {{ s.last_error }}
+                  </n-tooltip>
                   <span v-else class="pill pill-ok"><span class="dot ok"></span>有效</span>
                 </td>
                 <td><span class="last-time">{{ fmtTime(s.last_success_at) }}</span></td>
                 <td>
                   <div class="row-actions">
-                    <button class="btn" @click="startLogin(s)">{{ s.has_session ? '重新登录' : '登录' }}</button>
-                    <button class="btn" :disabled="pullingId === s.store.id" @click="pullOne(s)">
+                    <n-button quaternary size="tiny" @click="startLogin(s)">
+                      {{ s.has_session ? '重新登录' : '登录' }}
+                    </n-button>
+                    <n-button
+                      quaternary
+                      size="tiny"
+                      :disabled="pullingId === s.store.id"
+                      @click="pullOne(s)"
+                    >
                       {{ pullingId === s.store.id ? '拉取中…' : '拉取' }}
-                    </button>
-                    <button class="btn danger" @click="removeStore(s)">删除</button>
+                    </n-button>
+                    <n-button quaternary size="tiny" class="danger" @click="removeStore(s)">
+                      删除
+                    </n-button>
                   </div>
                 </td>
               </tr>
@@ -281,17 +297,17 @@ const accountCount = computed(() => accounts.value.length)
         </div>
 
         <div class="add-store">
-          <input v-model="newName" class="input" placeholder="门店名称，如：城北店" aria-label="门店名称" />
-          <input v-model="newAccount" class="input" placeholder="巨懂车账号（手机号）" aria-label="巨懂车账号" />
-          <input
-            v-model="newPassword"
-            class="input span-2"
+          <n-input v-model:value="newName" placeholder="门店名称，如：城北店" aria-label="门店名称" />
+          <n-input v-model:value="newAccount" placeholder="巨懂车账号（手机号）" aria-label="巨懂车账号" />
+          <n-input
+            v-model:value="newPassword"
+            class="span-2"
             type="password"
             placeholder="密码（可选，供自动重登）"
             aria-label="密码"
             autocomplete="new-password"
           />
-          <button class="btn" :disabled="adding" @click="addStore">{{ adding ? '添加中…' : '添加门店' }}</button>
+          <n-button :disabled="adding" @click="addStore">{{ adding ? '添加中…' : '添加门店' }}</n-button>
         </div>
         <p class="form-hint">
           密码存本地 SQLite（随应用数据目录的数据库文件走），仅用于会话失效时自动重登；
@@ -324,10 +340,9 @@ const accountCount = computed(() => accounts.value.length)
               <tr v-for="s in statuses" :key="s.store.id">
                 <td>{{ s.store.name }}</td>
                 <td v-for="a in accounts" :key="a.id" class="center">
-                  <input
-                    type="checkbox"
+                  <n-checkbox
                     :checked="mappings.get(s.store.id)?.has(a.id)"
-                    @change="toggleMapping(s, a.id, ($event.target as HTMLInputElement).checked)"
+                    @update:checked="toggleMapping(s, a.id, $event)"
                   />
                 </td>
               </tr>
@@ -357,24 +372,21 @@ const accountCount = computed(() => accounts.value.length)
             <p class="sub">应用运行期间按间隔自动拉取</p>
           </div>
         </div>
-        <label class="switch-row">
+        <div class="switch-row">
           <span>
             <b>自动拉取</b>
             <small>关闭后仅手动拉取，每日对账也停用</small>
           </span>
-          <input v-model="schedEnabled" type="checkbox" />
-          <span class="switch" aria-hidden="true"></span>
-        </label>
+          <n-switch v-model:value="schedEnabled" size="small" />
+        </div>
         <div class="field-row">
           <label class="field">
             <span>拉取间隔（分钟）</span>
-            <input
-              v-model.number="schedInterval"
-              class="input"
-              type="number"
-              min="15"
-              max="1440"
-              step="1"
+            <n-input-number
+              v-model:value="schedInterval"
+              :min="15"
+              :max="1440"
+              :show-button="false"
               placeholder="60"
               :disabled="!schedEnabled"
             />
@@ -382,7 +394,7 @@ const accountCount = computed(() => accounts.value.length)
         </div>
         <p class="form-hint">间隔按分钟计算，可填 15-1440 的整数（如 30 = 每半小时、1440 = 每天）。新门店首轮回填 90 天，之后每轮重拉最近 7 天，覆盖线索状态变更。修改后下一轮生效。</p>
         <div class="form-actions">
-          <button class="btn btn-sm" @click="saveScheduler">保存设置</button>
+          <n-button size="small" @click="saveScheduler">保存设置</n-button>
         </div>
       </section>
 
@@ -396,7 +408,7 @@ const accountCount = computed(() => accounts.value.length)
         <div class="field-row">
           <label class="field">
             <span>每日执行时刻（0-23 点）</span>
-            <input v-model.number="snapshotHour" class="input" type="number" min="0" max="23" step="1" />
+            <n-input-number v-model:value="snapshotHour" :min="0" :max="23" :show-button="false" />
           </label>
           <div class="field">
             <span>合并口径</span>
@@ -404,10 +416,10 @@ const accountCount = computed(() => accounts.value.length)
           </div>
         </div>
         <div class="form-actions">
-          <button class="btn btn-sm" @click="saveHour">保存时刻</button>
-          <button class="btn btn-sm" :disabled="snapRunning" @click="snapshotNow">
+          <n-button size="small" @click="saveHour">保存时刻</n-button>
+          <n-button size="small" :disabled="snapRunning" @click="snapshotNow">
             {{ snapRunning ? '对账中…' : '立即对账' }}
-          </button>
+          </n-button>
         </div>
         <div v-if="snapshotResults.length" class="mapping-wrap">
           <table class="ds-table store-table">

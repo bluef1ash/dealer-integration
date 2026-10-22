@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue'
+import { NButton, NInput, NSelect } from 'naive-ui'
+import { computed, onMounted, ref, watch } from 'vue'
 import { api } from '../api'
 import LeadDrawer from '../components/LeadDrawer.vue'
 import { useUiStore } from '../stores/index.ts'
@@ -16,12 +17,24 @@ const statuses = ref<string[]>([])
 const exporting = ref(false)
 
 const q = ref('')
-const status = ref<string | null>(null)
+// n-select 的 option 不接受 null，用空串作「全部状态」哨兵，过滤参数处转回 null
+const status = ref('')
 type Period = 'Today' | 'Last7' | 'All'
 const period = ref<Period>('Last7')
 const page = ref(0)
 const totalPages = ref(0)
 const current = ref<LeadDetail | null>(null)
+
+const statusOptions = computed(() => [
+  { label: '全部状态', value: '' },
+  ...statuses.value.map((s) => ({ label: s, value: s })),
+])
+
+function onStatusChange(value: string): void {
+  status.value = value
+  page.value = 0
+  void load()
+}
 
 function currentFilter(): LeadsFilter {
   const now = Math.floor(Date.now() / 1000)
@@ -34,7 +47,7 @@ function currentFilter(): LeadsFilter {
   const [from, to] = bounds[period.value]
   return {
     store_id: ui.storeId,
-    status: status.value,
+    status: status.value || null,
     q: q.value.trim() || null,
     from,
     to,
@@ -97,26 +110,37 @@ onMounted(async () => {
 <template>
   <div class="toolbar">
     <div class="toolbar-left">
-      <label class="search">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
-          <circle cx="11" cy="11" r="6.5" />
-          <path d="m16 16 4 4" />
-        </svg>
-        <input v-model="q" type="search" placeholder="搜索手机号、姓名、车型或计划" aria-label="搜索线索" />
-      </label>
-      <select v-model="status" class="control" aria-label="按线索状态筛选" @change="page = 0; load()">
-        <option :value="null">全部状态</option>
-        <option v-for="s in statuses" :key="s" :value="s">{{ s }}</option>
-      </select>
+      <n-input
+        v-model:value="q"
+        class="search"
+        size="small"
+        placeholder="搜索手机号、姓名、车型或计划"
+        aria-label="搜索线索"
+        clearable
+      >
+        <template #prefix>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+            <circle cx="11" cy="11" r="6.5" />
+            <path d="m16 16 4 4" />
+          </svg>
+        </template>
+      </n-input>
+      <n-select
+        :value="status"
+        :options="statusOptions"
+        :consistent-menu-width="false"
+        aria-label="按线索状态筛选"
+        @update:value="onStatusChange"
+      />
       <div class="seg" role="group" aria-label="留资时间">
         <button :class="{ 'is-on': period === 'Today' }" @click="period = 'Today'; page = 0; load()">今日</button>
         <button :class="{ 'is-on': period === 'Last7' }" @click="period = 'Last7'; page = 0; load()">近 7 天</button>
         <button :class="{ 'is-on': period === 'All' }" @click="period = 'All'; page = 0; load()">全部</button>
       </div>
     </div>
-    <button class="btn" :disabled="exporting" @click="exportExcel">
+    <n-button :disabled="exporting" @click="exportExcel">
       {{ exporting ? '导出中…' : '导出 Excel' }}
-    </button>
+    </n-button>
   </div>
 
   <section v-if="state === 'error'" class="panel panel-note">
@@ -167,8 +191,8 @@ onMounted(async () => {
     </div>
     <div class="pager">
       <span>第 {{ page + 1 }} / {{ totalPages }} 页</span>
-      <button :disabled="page === 0" @click="go(-1)">上一页</button>
-      <button :disabled="page + 1 >= totalPages" @click="go(1)">下一页</button>
+      <n-button size="tiny" :disabled="page === 0" @click="go(-1)">上一页</n-button>
+      <n-button size="tiny" :disabled="page + 1 >= totalPages" @click="go(1)">下一页</n-button>
     </div>
   </section>
 

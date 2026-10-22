@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { NButton } from 'naive-ui'
 import { computed } from 'vue'
 import type { LeadDetail } from '../types'
 import { fmtFull } from '../utils'
@@ -51,7 +52,7 @@ async function copyPhone(): Promise<void> {
       </div>
       <div class="phone-block">
         <span class="num">{{ lead.phone }}</span>
-        <button class="btn btn-sm" @click="copyPhone">复制</button>
+        <n-button size="small" @click="copyPhone">复制</n-button>
       </div>
       <dl class="detail-list">
         <template v-for="[k, v] in rows" :key="k">
