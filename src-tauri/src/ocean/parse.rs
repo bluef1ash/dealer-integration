@@ -160,19 +160,13 @@ pub fn parse_token_response(body: &str) -> AppResult<TokenData> {
 }
 
 /// OAuth 换 token 请求体（巨量的 grant_type 固定为 "auth_code"，
-/// 不是标准 OAuth 的 "authorization_code"——官方文档与 SDK 均如此）
-pub fn token_request_body(
-    app_id: i64,
-    secret: &str,
-    auth_code: &str,
-    redirect_uri: &str,
-) -> serde_json::Value {
+/// 不是标准 OAuth 的 "authorization_code"；官方文档参数不含 redirect_uri）
+pub fn token_request_body(app_id: i64, secret: &str, auth_code: &str) -> serde_json::Value {
     serde_json::json!({
         "app_id": app_id,
         "secret": secret,
         "grant_type": "auth_code",
         "auth_code": auth_code,
-        "redirect_uri": redirect_uri,
     })
 }
 
@@ -228,10 +222,11 @@ mod tests {
 
     #[test]
     fn token_request_shape_is_documented_contract() {
-        let body = token_request_body(1700000000, "sec", "auth-code", "http://127.0.0.1:1720");
+        let body = token_request_body(1700000000, "sec", "auth-code");
         assert_eq!(body["grant_type"], "auth_code");
         assert_eq!(body["auth_code"], "auth-code");
         assert_eq!(body["app_id"], 1700000000i64);
+        assert!(body.get("redirect_uri").is_none());
         let refresh = refresh_request_body(1700000000, "sec", "r-token");
         assert_eq!(refresh["grant_type"], "refresh_token");
         assert_eq!(refresh["refresh_token"], "r-token");

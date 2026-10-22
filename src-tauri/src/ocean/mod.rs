@@ -10,39 +10,18 @@ use crate::models::{AdReportRow, PlanReportRow};
 
 const TOKEN_URL: &str = "https://ad.oceanengine.com/open_api/oauth2/access_token/";
 const REPORT_URL: &str = "https://ad.oceanengine.com/open_api/2/report/integrated/get/";
-// 授权页真机校正（2026-10-22）：
-// - 旧 www.oceanengine.com/external/oauth/authorize 已下线（404）
-// - marketing.oceanengine.com 不存在（DNS 不解析）
-// - 官方 SDK 与文档确认授权页为 ad.oceanengine.com/openapi/audit/oauth.html；
-//   「app有误」= 平台按 client_id 查不到可授权应用，属后台应用状态/类型问题，非链接问题
-const AUTHORIZE_URL: &str = "https://ad.oceanengine.com/openapi/audit/oauth.html";
+// 授权页真机校正（2026-10-22，与开发者后台生成的官方授权链接逐字比对）：
+// 域名为 open.oceanengine.com/audit/oauth.html，参数名是 app_id（非 client_id），
+// 不携带 redirect_uri（回调绑定在后台登记的地址）；旧 external/oauth/authorize 已 404，
+// ad.oceanengine.com/openapi/audit/oauth.html 对该应用报「app有误」
+const AUTHORIZE_URL: &str = "https://open.oceanengine.com/audit/oauth.html";
 
-/// 桌面端 OAuth 回调：本机回环固定端口。
-/// redirect_uri 必须与开发者后台登记的回调地址完全一致（默认登记为不带路径的根地址）
+/// 桌面端 OAuth 回调端口（本机回环；回调地址已在开发者后台登记）
 pub const REDIRECT_PORT: u16 = 1720;
-pub fn redirect_uri() -> String {
-    format!("http://127.0.0.1:{REDIRECT_PORT}")
-}
 
-/// 拼授权链接（与开放平台「APPID 管理」页生成的默认授权 URL 同构）
+/// 拼授权链接（官方授权链接参数：app_id + state；素材授权 material_auth 与追踪 rid 按需可选）
 pub fn authorize_url(app_id: &str) -> String {
-    format!(
-        "{AUTHORIZE_URL}?client_id={app_id}&redirect_uri={}&state=dealer-integration",
-        urlencode(&redirect_uri())
-    )
-}
-
-fn urlencode(s: &str) -> String {
-    let mut out = String::new();
-    for b in s.bytes() {
-        match b {
-            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
-                out.push(b as char)
-            }
-            other => out.push_str(&format!("%{other:02X}")),
-        }
-    }
-    out
+    format!("{AUTHORIZE_URL}?app_id={app_id}&state=dealer-integration")
 }
 
 pub struct Client {
@@ -71,9 +50,8 @@ impl Client {
         app_id: i64,
         secret: &str,
         auth_code: &str,
-        redirect_uri: &str,
     ) -> AppResult<parse::TokenData> {
-        let body = parse::token_request_body(app_id, secret, auth_code, redirect_uri);
+        let body = parse::token_request_body(app_id, secret, auth_code);
         self.token(body).await
     }
 
@@ -223,13 +201,12 @@ mod tests {
     }
 
     #[test]
-    fn authorize_url_encodes_redirect() {
+    fn authorize_url_matches_official_shape() {
         let url = authorize_url("1700000000");
-        assert!(url.starts_with(
-            "https://ad.oceanengine.com/openapi/audit/oauth.html?client_id=1700000000"
-        ));
-        // 与开发者后台登记的回调地址一致（不带 /callback 路径）
-        assert!(url.contains("redirect_uri=http%3A%2F%2F127.0.0.1%3A1720"));
-        assert!(url.contains("state=dealer-integration"));
+        // 与开发者后台生成的官方授权链接同构：open 域 + app_id 参数 + state，无 redirect_uri
+        assert_eq!(
+            url,
+            "https://open.oceanengine.com/audit/oauth.html?app_id=1700000000&state=dealer-integration"
+        );
     }
 }

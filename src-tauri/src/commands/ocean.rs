@@ -105,12 +105,7 @@ pub async fn start_ocean_auth(
     let auth_code = wait_auth_code().await.map_err(err_string)?;
     let tokens = clients
         .ocean
-        .exchange_token(
-            app_id,
-            ocean_app.app_secret.trim(),
-            &auth_code,
-            &ocean::redirect_uri(),
-        )
+        .exchange_token(app_id, ocean_app.app_secret.trim(), &auth_code)
         .await
         .map_err(err_string)?;
     db.with(|conn| {
