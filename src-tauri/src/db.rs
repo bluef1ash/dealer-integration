@@ -39,6 +39,12 @@ impl Db {
         );
         // 巨懂车密码改存 SQLite（用户决策：随库走便于备份；旧值启动时从凭证库迁入）
         add_column("ALTER TABLE stores ADD COLUMN password TEXT NOT NULL DEFAULT ''");
+        // 线索扩展维度（线索类型 = 既有 source_label，不另加列）
+        for col in ["city", "traffic_type", "conversion_status", "scene"] {
+            add_column(&format!(
+                "ALTER TABLE leads ADD COLUMN {col} TEXT NOT NULL DEFAULT ''"
+            ));
+        }
         let _ = conn
             .execute_batch("CREATE INDEX IF NOT EXISTS idx_leads_feiyu ON leads(feiyu_leads_id)");
     }
@@ -106,6 +112,10 @@ CREATE TABLE IF NOT EXISTS leads (
     ad_id          TEXT NOT NULL DEFAULT '',
     promotion_id   TEXT NOT NULL DEFAULT '',
     promotion_name TEXT NOT NULL DEFAULT '',
+    city             TEXT NOT NULL DEFAULT '',
+    traffic_type     TEXT NOT NULL DEFAULT '',
+    conversion_status TEXT NOT NULL DEFAULT '',
+    scene            TEXT NOT NULL DEFAULT '',
     raw            TEXT NOT NULL DEFAULT '{}'
 );
 CREATE INDEX IF NOT EXISTS idx_leads_store_time ON leads(store_id, leads_time);

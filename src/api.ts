@@ -3,6 +3,7 @@ import { invoke } from '@tauri-apps/api/core'
 import type {
   AdAccount,
   Dashboard,
+  FilterOptions,
   LeadPage,
   LeadsFilter,
   OceanAppStatus,
@@ -23,7 +24,8 @@ export const api = {
   startLogin: (storeId: number) => invoke<void>('start_login', { storeId }),
   pullNow: (storeId: number | null) => invoke<PullOutcome[]>('pull_now', { storeId }),
   getLeads: (filter: LeadsFilter) => invoke<LeadPage>('get_leads', { filter }),
-  getStatusOptions: (storeId: number | null) => invoke<string[]>('get_status_options', { storeId }),
+  getLeadsFilterOptions: (storeId: number | null) =>
+    invoke<FilterOptions>('get_leads_filter_options', { storeId }),
   getDashboard: (range: Range, storeId: number | null) =>
     invoke<Dashboard>('get_dashboard', { range, storeId }),
   exportLeads: (filter: LeadsFilter) => invoke<string>('export_leads', { filter }),

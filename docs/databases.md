@@ -53,10 +53,14 @@ CREATE TABLE IF NOT EXISTS stores (
 | --- | --- |
 | `leads_id` TEXT PK | 列表接口线索 ID（约 10 位） |
 | `store_id` → stores | 归属门店（以该店会话拉取） |
-| `phone` / `name` / `status_key` / `status_label` / `source_label` / `intention` | 解析字段 |
+| `phone` / `name` / `status_key` / `status_label` / `source_label` / `intention` | 解析字段（`source_label` 即线索类型：私聊线索/广告直接线索） |
 | `leads_time` INTEGER | 留资时间 unix 秒 |
 | `feiyu_leads_id` TEXT | 飞鱼线索 ID（19 位，导出表「线索ID」列同源；跨表合并键） |
 | `ad_id` / `promotion_id` / `promotion_name` | 广告归因（列表接口 `extra` 原生携带） |
+| `city` TEXT | 询价城市（省/市；列表取 `city_info`+`phone_city`，导出「询价城市」同口径） |
+| `traffic_type` TEXT | 流量类型（自然经营线索/广告直接线索；列表取 `sub_product_type`，导出「流量类型」） |
+| `conversion_status` TEXT | 转化状态（私信/表单等转化动作；列表取 `feiyu_action_type`，导出「转化状态」） |
+| `scene` TEXT | 来源场景（一级[/二级]；列表取 `from_scene`+`from_sub_scene`，导出「一级/二级来源场景」） |
 | `raw` TEXT | 原始 JSON 兜底 |
 
 ```sql
@@ -74,6 +78,10 @@ CREATE TABLE IF NOT EXISTS leads (
     ad_id          TEXT NOT NULL DEFAULT '',
     promotion_id   TEXT NOT NULL DEFAULT '',
     promotion_name TEXT NOT NULL DEFAULT '',
+    city              TEXT NOT NULL DEFAULT '',
+    traffic_type      TEXT NOT NULL DEFAULT '',
+    conversion_status TEXT NOT NULL DEFAULT '',
+    scene             TEXT NOT NULL DEFAULT '',
     raw            TEXT NOT NULL DEFAULT '{}'
 );
 ```

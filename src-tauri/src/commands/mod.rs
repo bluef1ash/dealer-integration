@@ -163,8 +163,11 @@ pub fn get_leads(db: State<'_, Db>, filter: LeadsFilter) -> Result<LeadPage, Str
 }
 
 #[tauri::command]
-pub fn get_status_options(db: State<'_, Db>, store_id: Option<i64>) -> Result<Vec<String>, String> {
-    db.with(|conn| query::distinct_statuses(conn, store_id))
+pub fn get_leads_filter_options(
+    db: State<'_, Db>,
+    store_id: Option<i64>,
+) -> Result<query::FilterOptions, String> {
+    db.with(|conn| query::filter_options(conn, store_id))
         .map_err(err_string)
 }
 

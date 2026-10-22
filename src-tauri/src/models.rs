@@ -53,6 +53,18 @@ pub struct LeadRow {
     pub promotion_id: String,
     #[serde(default)]
     pub promotion_name: String,
+    /// 询价城市（省/市；列表取 phone_city，导出表「询价城市」同口径）
+    #[serde(default)]
+    pub city: String,
+    /// 流量类型（自然经营线索/广告直接线索等；列表取 sub_product_type）
+    #[serde(default)]
+    pub traffic_type: String,
+    /// 转化状态（私信/表单等转化动作；列表取 feiyu_action_type）
+    #[serde(default)]
+    pub conversion_status: String,
+    /// 来源场景（一级[/二级]；列表取 from_scene[/from_sub_scene]）
+    #[serde(default)]
+    pub scene: String,
     /// 原始 JSON 兜底（导出快照无对应列时为 {}）
     #[serde(default)]
     pub raw: serde_json::Value,
@@ -64,6 +76,12 @@ pub struct LeadsFilter {
     pub store_id: Option<i64>,
     /// 按状态 label 精确匹配；选项由前端从 distinct 查询获得
     pub status: Option<String>,
+    /// 线索类型（source_label）/ 询价城市 / 流量类型 / 转化状态 / 来源场景，均精确匹配
+    pub source_label: Option<String>,
+    pub city: Option<String>,
+    pub traffic_type: Option<String>,
+    pub conversion_status: Option<String>,
+    pub scene: Option<String>,
     /// 搜索串：匹配手机号/姓名/意向车型/计划名（LIKE）
     pub q: Option<String>,
     /// 留资时间窗口 unix 秒（含头含尾）
@@ -145,6 +163,15 @@ pub struct LeadDetail {
     pub intention: String,
     pub leads_time: i64,
     pub promotion_name: String,
+    /// 询价城市 / 流量类型 / 转化状态 / 来源场景
+    #[serde(default)]
+    pub city: String,
+    #[serde(default)]
+    pub traffic_type: String,
+    #[serde(default)]
+    pub conversion_status: String,
+    #[serde(default)]
+    pub scene: String,
 }
 
 /// 分页结果

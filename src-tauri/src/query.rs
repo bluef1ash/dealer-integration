@@ -5,8 +5,9 @@
 
 use chrono::TimeZone;
 use rusqlite::Connection;
+use serde::Serialize;
 
-use crate::error::AppResult;
+use crate::error::{AppError, AppResult};
 use crate::models::{Dashboard, LeadDetail, LeadPage, LeadsFilter, PlanLine, Range, StoreCard};
 
 const DAY: i64 = 86_400;
@@ -35,28 +36,76 @@ pub fn range_bounds(range: &Range) -> (i64, i64) {
     }
 }
 
-/// 状态筛选选项（随库内真实 label 走，避免与平台枚举硬编码脱节）
+/// 明细页可筛字段（列名 → 语义）；选项随库内真实 label 走，避免与平台枚举硬编码脱节
+const FILTER_COLUMNS: [(&str, &str); 6] = [
+    ("status", "status_label"),
+    ("source_label", "source_label"),
+    ("city", "city"),
+    ("traffic_type", "traffic_type"),
+    ("conversion_status", "conversion_status"),
+    ("scene", "scene"),
+];
+
+/// 明细页全部筛选项的可选值
+#[derive(Debug, Serialize, Default)]
+pub struct FilterOptions {
+    pub status: Vec<String>,
+    pub source_label: Vec<String>,
+    pub city: Vec<String>,
+    pub traffic_type: Vec<String>,
+    pub conversion_status: Vec<String>,
+    pub scene: Vec<String>,
+}
+
+fn distinct_column(
+    conn: &Connection,
+    column: &str,
+    store_id: Option<i64>,
+) -> AppResult<Vec<String>> {
+    if !FILTER_COLUMNS.iter().any(|(_, col)| *col == column) {
+        return Err(AppError::Message(format!("不支持的筛选项: {column}")));
+    }
+    let sql = format!(
+        "SELECT DISTINCT {column} FROM leads
+         WHERE {column} <> '' {} ORDER BY {column}",
+        if store_id.is_some() {
+            "AND store_id = ?1"
+        } else {
+            ""
+        }
+    );
+    let mut stmt = conn.prepare(&sql)?;
+    match store_id {
+        Some(id) => Ok(stmt
+            .query_map([id], |r| r.get::<_, String>(0))?
+            .collect::<Result<Vec<_>, _>>()?),
+        None => Ok(stmt
+            .query_map([], |r| r.get::<_, String>(0))?
+            .collect::<Result<Vec<_>, _>>()?),
+    }
+}
+
+/// 状态筛选选项
 pub fn distinct_statuses(conn: &Connection, store_id: Option<i64>) -> AppResult<Vec<String>> {
-    let rows = match store_id {
-        Some(id) => {
-            let mut stmt = conn.prepare(
-                "SELECT DISTINCT status_label FROM leads WHERE status_label <> '' AND store_id = ?1 ORDER BY status_label",
-            )?;
-            let rows = stmt
-                .query_map([id], |r| r.get::<_, String>(0))?
-                .collect::<Result<Vec<_>, _>>()?;
-            rows
+    distinct_column(conn, "status_label", store_id)
+}
+
+/// 明细页筛选下拉的全部选项（一次往返）
+pub fn filter_options(conn: &Connection, store_id: Option<i64>) -> AppResult<FilterOptions> {
+    let mut opts = FilterOptions::default();
+    for (field, column) in FILTER_COLUMNS {
+        let values = distinct_column(conn, column, store_id)?;
+        match field {
+            "status" => opts.status = values,
+            "source_label" => opts.source_label = values,
+            "city" => opts.city = values,
+            "traffic_type" => opts.traffic_type = values,
+            "conversion_status" => opts.conversion_status = values,
+            "scene" => opts.scene = values,
+            _ => unreachable!("FILTER_COLUMNS 已收敛字段名"),
         }
-        None => {
-            let mut stmt =
-                conn.prepare("SELECT DISTINCT status_label FROM leads WHERE status_label <> '' ORDER BY status_label")?;
-            let rows = stmt
-                .query_map([], |r| r.get::<_, String>(0))?
-                .collect::<Result<Vec<_>, _>>()?;
-            rows
-        }
-    };
-    Ok(rows)
+    }
+    Ok(opts)
 }
 
 /// 线索分页查询（时间/门店/状态可组合；留资时间倒序；page_size=0 不分页，供导出复用同一筛选）
@@ -70,6 +119,19 @@ pub fn leads_page(conn: &Connection, filter: &LeadsFilter) -> AppResult<LeadPage
     if let Some(status) = &filter.status {
         where_sql.push_str(&format!(" AND l.status_label = ?{}", bind.len() + 1));
         bind.push(Box::new(status.clone()));
+    }
+    // 扩展维度筛选（线索类型/询价城市/流量类型/转化状态/来源场景），空值视作不限
+    for (column, value) in [
+        ("l.source_label", filter.source_label.as_deref()),
+        ("l.city", filter.city.as_deref()),
+        ("l.traffic_type", filter.traffic_type.as_deref()),
+        ("l.conversion_status", filter.conversion_status.as_deref()),
+        ("l.scene", filter.scene.as_deref()),
+    ] {
+        if let Some(v) = value.filter(|v| !v.is_empty()) {
+            where_sql.push_str(&format!(" AND {column} = ?{}", bind.len() + 1));
+            bind.push(Box::new(v.to_string()));
+        }
     }
     if let Some(q) = filter.q.as_deref().map(str::trim).filter(|q| !q.is_empty()) {
         where_sql.push_str(&format!(
@@ -105,7 +167,8 @@ pub fn leads_page(conn: &Connection, filter: &LeadsFilter) -> AppResult<LeadPage
     };
     let sql = format!(
         "SELECT l.leads_id, l.store_id, s.name, l.phone, l.name, l.status_label, l.source_label,
-                l.intention, l.leads_time, l.promotion_name
+                l.intention, l.leads_time, l.promotion_name,
+                l.city, l.traffic_type, l.conversion_status, l.scene
          FROM leads l JOIN stores s ON s.id = l.store_id
          WHERE {where_sql}
          ORDER BY l.leads_time DESC, l.leads_id DESC{limit_sql}"
@@ -126,6 +189,10 @@ pub fn leads_page(conn: &Connection, filter: &LeadsFilter) -> AppResult<LeadPage
                     intention: r.get(7)?,
                     leads_time: r.get(8)?,
                     promotion_name: r.get(9)?,
+                    city: r.get(10)?,
+                    traffic_type: r.get(11)?,
+                    conversion_status: r.get(12)?,
+                    scene: r.get(13)?,
                 })
             },
         )?
@@ -465,6 +532,52 @@ mod tests {
             assert_eq!(page.total, 5);
             assert_eq!(page.rows.len(), 2);
             assert_eq!(page.rows[0].leads_id, "L4");
+            Ok(())
+        })
+        .unwrap();
+    }
+
+    /// 扩展维度（线索类型/询价城市/流量类型/转化状态/来源场景）：筛选与选项聚合
+    #[test]
+    fn dimension_filters_and_options() {
+        let db = Db::open_in_memory();
+        db.with(|conn| {
+            crate::repo::stores::insert(conn, "城东店", "13800000001")?;
+            let dims = LeadRow {
+                city: "辽宁/鞍山".into(),
+                traffic_type: "自然经营线索".into(),
+                conversion_status: "私信".into(),
+                scene: "直播/直播进私留资".into(),
+                ..lead("L1", today_start() + 36000, "未联系", "P1")
+            };
+            crate::repo::leads::upsert_leads(
+                conn,
+                1,
+                &[dims, lead("L2", today_start(), "已成交", "P1")],
+            )?;
+
+            // 选项聚合：空值不入选项
+            let opts = filter_options(conn, Some(1))?;
+            assert_eq!(opts.city, vec!["辽宁/鞍山"]);
+            assert_eq!(opts.traffic_type, vec!["自然经营线索"]);
+            assert_eq!(opts.conversion_status, vec!["私信"]);
+            assert_eq!(opts.scene, vec!["直播/直播进私留资"]);
+
+            // 维度筛选只圈中带维度的 L1，且出参回带
+            let page = leads_page(
+                conn,
+                &LeadsFilter {
+                    city: Some("辽宁/鞍山".into()),
+                    page_size: 10,
+                    ..Default::default()
+                },
+            )?;
+            assert_eq!(page.total, 1);
+            assert_eq!(page.rows[0].city, "辽宁/鞍山");
+            assert_eq!(page.rows[0].scene, "直播/直播进私留资");
+
+            // 列名白名单之外直接报错
+            assert!(distinct_column(conn, "raw", None).is_err());
             Ok(())
         })
         .unwrap();

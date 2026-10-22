@@ -46,7 +46,7 @@ pub fn run() {
             commands::start_login,
             commands::pull_now,
             commands::get_leads,
-            commands::get_status_options,
+            commands::get_leads_filter_options,
             commands::get_dashboard,
             commands::export_leads,
             commands::ocean::list_ocean_apps,

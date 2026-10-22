@@ -15,8 +15,12 @@ const rows = computed(() => {
     return []
   }
   return [
+    ['询价城市', l.city || '—'],
     ['意向车型', l.intention || '—'],
     ['线索类型', l.source_label || '—'],
+    ['流量类型', l.traffic_type || '—'],
+    ['转化状态', l.conversion_status || '—'],
+    ['来源场景', l.scene || '—'],
     ['来源计划', l.promotion_name || '自然流量'],
     ['门店', l.store_name],
     ['线索 ID', l.leads_id],

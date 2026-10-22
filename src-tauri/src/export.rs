@@ -31,11 +31,15 @@ pub fn export_leads(
         "线索ID",
         "留资时间",
         "门店",
-        "意向车型",
-        "手机号",
         "客户姓名",
+        "手机号",
+        "询价城市",
+        "意向车型",
+        "线索类型",
+        "流量类型",
+        "转化状态",
+        "来源场景",
         "状态",
-        "来源",
         "计划名称",
     ];
     for (col, h) in headers.iter().enumerate() {
@@ -50,15 +54,19 @@ pub fn export_leads(
             .map(|t| t.format("%Y-%m-%d %H:%M:%S").to_string())
             .unwrap_or_default();
         let row = (i + 1) as u32;
-        let values: [String; 9] = [
+        let values: [String; 13] = [
             r.leads_id.clone(),
             time,
             r.store_name.clone(),
-            r.intention.clone(),
-            r.phone.clone(),
             r.name.clone(),
-            r.status_label.clone(),
+            r.phone.clone(),
+            r.city.clone(),
+            r.intention.clone(),
             r.source_label.clone(),
+            r.traffic_type.clone(),
+            r.conversion_status.clone(),
+            r.scene.clone(),
+            r.status_label.clone(),
             r.promotion_name.clone(),
         ];
         for (col, v) in values.iter().enumerate() {
@@ -126,7 +134,7 @@ mod tests {
         let rows: Vec<_> = range.rows().collect();
         assert_eq!(rows[0][0], "线索ID");
         assert_eq!(rows.len(), 3); // 表头 + 2 行（L1、L4）
-        assert!(rows.iter().skip(1).all(|r| r[6] == "未联系"));
+        assert!(rows.iter().skip(1).all(|r| r[11] == "未联系"));
         let _ = std::fs::remove_file(&path);
     }
 }

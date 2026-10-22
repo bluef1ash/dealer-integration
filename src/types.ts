@@ -39,11 +39,30 @@ export interface LeadDetail {
   phone: string
   name: string
   status_label: string
+  /** 线索类型（私聊线索/广告直接线索） */
   source_label: string
   intention: string
   /** 留资时间 unix 秒 */
   leads_time: number
   promotion_name: string
+  /** 询价城市（省/市） */
+  city: string
+  /** 流量类型（自然经营线索/广告直接线索） */
+  traffic_type: string
+  /** 转化状态（私信/表单等转化动作） */
+  conversion_status: string
+  /** 来源场景（一级/二级） */
+  scene: string
+}
+
+/** 明细页筛选下拉的全部选项 */
+export interface FilterOptions {
+  status: string[]
+  source_label: string[]
+  city: string[]
+  traffic_type: string[]
+  conversion_status: string[]
+  scene: string[]
 }
 
 export interface LeadPage {
@@ -55,6 +74,12 @@ export interface LeadPage {
 export interface LeadsFilter {
   store_id: number | null
   status: string | null
+  /** 线索类型 / 询价城市 / 流量类型 / 转化状态 / 来源场景，均精确匹配 */
+  source_label: string | null
+  city: string | null
+  traffic_type: string | null
+  conversion_status: string | null
+  scene: string | null
   /** 搜索串：匹配手机号/姓名/意向车型/计划名 */
   q: string | null
   from: number | null

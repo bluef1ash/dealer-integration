@@ -36,6 +36,11 @@ pub fn read_judongche_export(path: &Path) -> AppResult<Vec<LeadRow>> {
         "留资时间",
         "线索类型",
         "意向车型",
+        "询价城市",
+        "流量类型",
+        "转化状态",
+        "一级来源场景",
+        "二级来源场景",
         "广告ID",
         "广告名称",
     ]
@@ -53,6 +58,15 @@ pub fn read_judongche_export(path: &Path) -> AppResult<Vec<LeadRow>> {
         if leads_id.is_empty() {
             continue;
         }
+        // 来源场景两列合并为「一级/二级」，与列表接口口径一致
+        let scene = [
+            cell(*col_of.get("一级来源场景").unwrap_or(&usize::MAX)),
+            cell(*col_of.get("二级来源场景").unwrap_or(&usize::MAX)),
+        ]
+        .into_iter()
+        .filter(|s| !s.is_empty())
+        .collect::<Vec<_>>()
+        .join("/");
         out.push(LeadRow {
             // 导出表的线索 ID 即飞鱼 ID（跨表合并键）；主键还原在 reconcile 中做
             feiyu_leads_id: leads_id.clone(),
@@ -67,6 +81,10 @@ pub fn read_judongche_export(path: &Path) -> AppResult<Vec<LeadRow>> {
             ad_id: String::new(),
             promotion_id: cell(*col_of.get("广告ID").unwrap_or(&usize::MAX)),
             promotion_name: cell(*col_of.get("广告名称").unwrap_or(&usize::MAX)),
+            city: cell(*col_of.get("询价城市").unwrap_or(&usize::MAX)),
+            traffic_type: cell(*col_of.get("流量类型").unwrap_or(&usize::MAX)),
+            conversion_status: cell(*col_of.get("转化状态").unwrap_or(&usize::MAX)),
+            scene,
             raw: serde_json::json!({ "from": "export_snapshot" }),
         });
     }

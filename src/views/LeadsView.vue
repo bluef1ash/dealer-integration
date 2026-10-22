@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { NButton, NInput, NSelect } from 'naive-ui'
-import { computed, onMounted, ref, watch } from 'vue'
+import { NButton, NDatePicker, NInput, NSelect } from 'naive-ui'
+import type { Ref } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 import { api } from '../api'
 import LeadDrawer from '../components/LeadDrawer.vue'
 import { useUiStore } from '../stores/index.ts'
-import type { FetchState, LeadDetail, LeadPage, LeadsFilter } from '../types'
+import type { FetchState, FilterOptions, LeadDetail, LeadPage, LeadsFilter } from '../types'
 import { fmtFull } from '../utils'
 
 const ui = useUiStore()
@@ -13,44 +14,50 @@ const { showToast } = useUiStore()
 const PAGE_SIZE = 8
 const state = ref<FetchState>('loading')
 const data = ref<LeadPage | null>(null)
-const statuses = ref<string[]>([])
 const exporting = ref(false)
 
 const q = ref('')
-// n-select 的 option 不接受 null，用空串作「全部状态」哨兵，过滤参数处转回 null
-const status = ref('')
-type Period = 'Today' | 'Last7' | 'All'
-const period = ref<Period>('Last7')
+const status = ref<string | null>(null)
+const sourceLabel = ref<string | null>(null)
+const city = ref<string | null>(null)
+const trafficType = ref<string | null>(null)
+const conversionStatus = ref<string | null>(null)
+const scene = ref<string | null>(null)
+/** 留资时间范围（毫秒，n-date-picker daterange）；null = 不限 */
+const range = ref<[number, number] | null>(null)
 const page = ref(0)
 const totalPages = ref(0)
 const current = ref<LeadDetail | null>(null)
 
-const statusOptions = computed(() => [
-  { label: '全部状态', value: '' },
-  ...statuses.value.map((s) => ({ label: s, value: s })),
-])
+const EMPTY_OPTIONS: FilterOptions = {
+  status: [],
+  source_label: [],
+  city: [],
+  traffic_type: [],
+  conversion_status: [],
+  scene: [],
+}
+const opts = ref<FilterOptions>({ ...EMPTY_OPTIONS })
 
-function onStatusChange(value: string): void {
-  status.value = value
-  page.value = 0
-  void load()
+const selectOptions = (values: string[]) => values.map((v) => ({ label: v, value: v }))
+
+async function loadOptions(): Promise<void> {
+  opts.value = await api.getLeadsFilterOptions(ui.storeId).catch(() => ({ ...EMPTY_OPTIONS }))
 }
 
 function currentFilter(): LeadsFilter {
-  const now = Math.floor(Date.now() / 1000)
-  const dayStart = Math.floor(new Date(new Date().setHours(0, 0, 0, 0)).getTime() / 1000)
-  const bounds: Record<Period, [number | null, number | null]> = {
-    Today: [dayStart, now],
-    Last7: [dayStart - 6 * 86400, now],
-    All: [null, null],
-  }
-  const [from, to] = bounds[period.value]
+  const [from, to] = range.value ?? [null, null]
   return {
     store_id: ui.storeId,
-    status: status.value || null,
+    status: status.value,
+    source_label: sourceLabel.value,
+    city: city.value,
+    traffic_type: trafficType.value,
+    conversion_status: conversionStatus.value,
+    scene: scene.value,
     q: q.value.trim() || null,
-    from,
-    to,
+    from: from === null ? null : Math.floor(from / 1000),
+    to: to === null ? null : Math.floor(to / 1000) + 86_399, // 含结束日整天
     page: page.value,
     page_size: PAGE_SIZE,
   }
@@ -68,15 +75,32 @@ async function load(): Promise<void> {
   }
 }
 
-watch(q, () => {
+function reload(): void {
   page.value = 0
   void load()
-})
+}
+
+/** 维度下拉通用绑定：写入 + 重查（模板中 ref 会被解包，故在脚本侧生成处理器） */
+function bindDimension(target: Ref<string | null>) {
+  return (value: string | null) => {
+    target.value = value
+    reload()
+  }
+}
+
+const onStatus = bindDimension(status)
+const onSourceLabel = bindDimension(sourceLabel)
+const onCity = bindDimension(city)
+const onTrafficType = bindDimension(trafficType)
+const onConversionStatus = bindDimension(conversionStatus)
+const onScene = bindDimension(scene)
+
+watch(q, reload)
 watch(
   () => ui.storeId,
   () => {
-    page.value = 0
-    void load()
+    reload()
+    void loadOptions()
   },
 )
 
@@ -102,7 +126,7 @@ async function go(delta: number): Promise<void> {
 }
 
 onMounted(async () => {
-  statuses.value = await api.getStatusOptions(null).catch(() => [])
+  await loadOptions()
   await load()
 })
 </script>
@@ -127,16 +151,66 @@ onMounted(async () => {
       </n-input>
       <n-select
         :value="status"
-        :options="statusOptions"
+        :options="selectOptions(opts.status)"
+        size="small"
+        placeholder="状态"
         :consistent-menu-width="false"
-        aria-label="按线索状态筛选"
-        @update:value="onStatusChange"
+        aria-label="按状态筛选"
+        @update:value="onStatus"
       />
-      <div class="seg" role="group" aria-label="留资时间">
-        <button :class="{ 'is-on': period === 'Today' }" @click="period = 'Today'; page = 0; load()">今日</button>
-        <button :class="{ 'is-on': period === 'Last7' }" @click="period = 'Last7'; page = 0; load()">近 7 天</button>
-        <button :class="{ 'is-on': period === 'All' }" @click="period = 'All'; page = 0; load()">全部</button>
-      </div>
+      <n-select
+        :value="sourceLabel"
+        :options="selectOptions(opts.source_label)"
+        size="small"
+        placeholder="线索类型"
+        :consistent-menu-width="false"
+        aria-label="按线索类型筛选"
+        @update:value="onSourceLabel"
+      />
+      <n-select
+        :value="city"
+        :options="selectOptions(opts.city)"
+        size="small"
+        placeholder="询价城市"
+        :consistent-menu-width="false"
+        aria-label="按询价城市筛选"
+        @update:value="onCity"
+      />
+      <n-select
+        :value="trafficType"
+        :options="selectOptions(opts.traffic_type)"
+        size="small"
+        placeholder="流量类型"
+        :consistent-menu-width="false"
+        aria-label="按流量类型筛选"
+        @update:value="onTrafficType"
+      />
+      <n-select
+        :value="conversionStatus"
+        :options="selectOptions(opts.conversion_status)"
+        size="small"
+        placeholder="转化状态"
+        :consistent-menu-width="false"
+        aria-label="按转化状态筛选"
+        @update:value="onConversionStatus"
+      />
+      <n-select
+        :value="scene"
+        :options="selectOptions(opts.scene)"
+        size="small"
+        placeholder="来源场景"
+        :consistent-menu-width="false"
+        aria-label="按来源场景筛选"
+        @update:value="onScene"
+      />
+      <n-date-picker
+        v-model:value="range"
+        type="daterange"
+        size="small"
+        clearable
+        aria-label="留资时间范围"
+        @update:value="reload"
+      />
     </div>
     <n-button :disabled="exporting" @click="exportExcel">
       {{ exporting ? '导出中…' : '导出 Excel' }}
@@ -159,9 +233,14 @@ onMounted(async () => {
           <tr>
             <th>留资时间</th>
             <th>门店</th>
-            <th>意向车型</th>
             <th>客户</th>
             <th>手机号</th>
+            <th>询价城市</th>
+            <th>意向车型</th>
+            <th>线索类型</th>
+            <th>流量类型</th>
+            <th>转化状态</th>
+            <th>来源场景</th>
             <th>状态</th>
             <th>来源计划</th>
             <th></th>
@@ -169,14 +248,19 @@ onMounted(async () => {
         </thead>
         <tbody>
           <tr v-if="!data?.rows.length">
-            <td colspan="8" class="empty-row">没有符合条件的线索，调整筛选或先在设置页完成采集。</td>
+            <td colspan="13" class="empty-row">没有符合条件的线索，调整筛选或先在设置页完成采集。</td>
           </tr>
           <tr v-for="l in data?.rows ?? []" :key="l.leads_id" @click="current = l">
             <td><span class="lead-time">{{ fmtFull(l.leads_time) }}</span></td>
             <td>{{ l.store_name }}</td>
-            <td>{{ l.intention || '—' }}</td>
             <td>{{ l.name || '未命名' }}</td>
             <td><span class="phone-cell">{{ l.phone }}</span></td>
+            <td>{{ l.city || '—' }}</td>
+            <td>{{ l.intention || '—' }}</td>
+            <td>{{ l.source_label || '—' }}</td>
+            <td>{{ l.traffic_type || '—' }}</td>
+            <td>{{ l.conversion_status || '—' }}</td>
+            <td>{{ l.scene || '—' }}</td>
             <td>
               <span
                 class="pill"

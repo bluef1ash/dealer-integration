@@ -5,7 +5,8 @@ use rusqlite::{Connection, OptionalExtension};
 use crate::error::AppResult;
 use crate::models::{AdReportRow, LeadRow, PlanReportRow};
 
-/// 按线索 ID 批量 upsert（同一门店口径）；返回写入行数
+/// 按线索 ID 批量 upsert（同一门店口径）；返回写入行数。
+/// 四个扩展维度（城市/流量/转化/场景）空值不覆盖库内现值——导出快照可能缺列。
 pub fn upsert_leads(conn: &Connection, store_id: i64, rows: &[LeadRow]) -> AppResult<usize> {
     let tx = conn.unchecked_transaction()?;
     let mut n = 0;
@@ -13,8 +14,9 @@ pub fn upsert_leads(conn: &Connection, store_id: i64, rows: &[LeadRow]) -> AppRe
         n += tx.execute(
             "INSERT INTO leads (leads_id, store_id, phone, name, status_key, status_label,
                                 source_label, intention, leads_time, feiyu_leads_id,
-                                ad_id, promotion_id, promotion_name, raw)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)
+                                ad_id, promotion_id, promotion_name, city, traffic_type,
+                                conversion_status, scene, raw)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18)
              ON CONFLICT(leads_id) DO UPDATE SET
                 phone = excluded.phone,
                 name = excluded.name,
@@ -28,6 +30,10 @@ pub fn upsert_leads(conn: &Connection, store_id: i64, rows: &[LeadRow]) -> AppRe
                 ad_id = excluded.ad_id,
                 promotion_id = excluded.promotion_id,
                 promotion_name = excluded.promotion_name,
+                city = CASE WHEN excluded.city = '' THEN leads.city ELSE excluded.city END,
+                traffic_type = CASE WHEN excluded.traffic_type = '' THEN leads.traffic_type ELSE excluded.traffic_type END,
+                conversion_status = CASE WHEN excluded.conversion_status = '' THEN leads.conversion_status ELSE excluded.conversion_status END,
+                scene = CASE WHEN excluded.scene = '' THEN leads.scene ELSE excluded.scene END,
                 raw = excluded.raw",
             rusqlite::params![
                 r.leads_id,
@@ -43,6 +49,10 @@ pub fn upsert_leads(conn: &Connection, store_id: i64, rows: &[LeadRow]) -> AppRe
                 r.ad_id,
                 r.promotion_id,
                 r.promotion_name,
+                r.city,
+                r.traffic_type,
+                r.conversion_status,
+                r.scene,
                 r.raw.to_string()
             ],
         )?;
