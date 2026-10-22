@@ -11,7 +11,9 @@ import { useUiStore } from '../stores'
 import type { Dashboard as Dash, FetchState, Range } from '../types'
 import { fmtTime, yuan } from '../utils'
 
-// 本页用到的 echarts 能力按需注册（vue-echarts 8 不再全局注入）
+// 本页用到的 echarts 能力按需注册（vue-echarts 8 不再全局注入）。
+// 实测 barrel 与 lib/ 深层路径产物体积一致（1.25MB），barrel 即已摇树，
+// 产物里的 sankey/gauge 等字样只是共享的图表名称字典，不是实现
 use([BarChart, LineChart, GridComponent, TooltipComponent, MarkLineComponent, CanvasRenderer])
 
 // canvas 不认 CSS 变量，主题色按 style.less 的 :root 字面量写死，改色需两处同步
