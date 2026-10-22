@@ -10,10 +10,12 @@ use crate::models::{AdReportRow, PlanReportRow};
 
 const TOKEN_URL: &str = "https://ad.oceanengine.com/open_api/oauth2/access_token/";
 const REPORT_URL: &str = "https://ad.oceanengine.com/open_api/2/report/integrated/get/";
-// 授权页路径经真机校正（2026-10-22）：原 www.oceanengine.com/external/oauth/authorize 已下线（404）；
-// ad.oceanengine.com 入口对商业开放平台（open.oceanengine.com 后台）创建的应用报「app有误」，
-// 商业开放平台应用的授权页在 marketing.oceanengine.com（与后台生成的官方授权链接同构）
-const AUTHORIZE_URL: &str = "https://marketing.oceanengine.com/openapi/audit/oauth.html";
+// 授权页真机校正（2026-10-22）：
+// - 旧 www.oceanengine.com/external/oauth/authorize 已下线（404）
+// - marketing.oceanengine.com 不存在（DNS 不解析）
+// - 官方 SDK 与文档确认授权页为 ad.oceanengine.com/openapi/audit/oauth.html；
+//   「app有误」= 平台按 client_id 查不到可授权应用，属后台应用状态/类型问题，非链接问题
+const AUTHORIZE_URL: &str = "https://ad.oceanengine.com/openapi/audit/oauth.html";
 
 /// 桌面端 OAuth 回调：本机回环固定端口。
 /// redirect_uri 必须与开发者后台登记的回调地址完全一致（默认登记为不带路径的根地址）
@@ -224,7 +226,7 @@ mod tests {
     fn authorize_url_encodes_redirect() {
         let url = authorize_url("1700000000");
         assert!(url.starts_with(
-            "https://marketing.oceanengine.com/openapi/audit/oauth.html?client_id=1700000000"
+            "https://ad.oceanengine.com/openapi/audit/oauth.html?client_id=1700000000"
         ));
         // 与开发者后台登记的回调地址一致（不带 /callback 路径）
         assert!(url.contains("redirect_uri=http%3A%2F%2F127.0.0.1%3A1720"));
