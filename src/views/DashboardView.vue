@@ -1,10 +1,25 @@
 <script setup lang="ts">
+import { BarChart, LineChart } from 'echarts/charts'
+import { GridComponent, MarkLineComponent, TooltipComponent } from 'echarts/components'
+import { use } from 'echarts/core'
+import { CanvasRenderer } from 'echarts/renderers'
 import { NButton, NDatePicker } from 'naive-ui'
 import { computed, onMounted, ref, watch } from 'vue'
+import VChart from 'vue-echarts'
 import { api } from '../api'
 import { useUiStore } from '../stores'
 import type { Dashboard as Dash, FetchState, Range } from '../types'
 import { fmtTime, yuan } from '../utils'
+
+// 本页用到的 echarts 能力按需注册（vue-echarts 8 不再全局注入）
+use([BarChart, LineChart, GridComponent, TooltipComponent, MarkLineComponent, CanvasRenderer])
+
+// canvas 不认 CSS 变量，主题色按 style.less 的 :root 字面量写死，改色需两处同步
+const ACCENT = 'oklch(58% 0.18 255)'
+const ACCENT_BAR = 'oklch(58% 0.18 255 / 40%)'
+const MUTED = 'oklch(54% 0.012 250)'
+const BORDER = 'oklch(92% 0.005 250)'
+const FG = 'oklch(18% 0.012 250)'
 
 const ui = useUiStore()
 const { showToast } = useUiStore()
@@ -14,7 +29,6 @@ const dash = ref<Dash | null>(null)
 const rangeKey = ref<'Today' | 'Last7' | 'Last30' | 'Custom'>('Today')
 const customFrom = ref('')
 const customTo = ref('')
-const hoverBar = ref(-1)
 
 function buildRange(): Range {
   if (rangeKey.value === 'Custom') {
@@ -80,67 +94,84 @@ const series = computed(() => {
   return { leads: cards.find((c) => c.store.id === ui.storeId)?.trend.slice() ?? [] }
 })
 
-const CHART_W = 760
-const CHART_H = 190
-const bars = computed(() => {
-  const leads = series.value.leads
-  const n = leads.length
-  if (!n) {
-    return {
-      list: [] as Array<{ x: number; y: number; w: number; h: number; v: number }>,
-      avg: 0,
-      avgY: 0,
-      total: 0,
-      n,
-    }
-  }
-  const max = Math.max(...leads, 1) * 1.16
-  const gap = 12
-  const bw = (CHART_W - gap * (n - 1)) / n
-  const total = leads.reduce((a, b) => a + b, 0)
-  const avg = total / n
-  const list = leads.map((v, i) => {
-    const h = Math.max(3, (v / max) * (CHART_H - 16))
-    return { x: i * (bw + gap), y: CHART_H - h, w: bw, h, v }
+const trendDates = computed(() => {
+  const n = series.value.leads.length
+  return Array.from({ length: n }, (_, i) => {
+    const d = new Date(Date.now() - (n - 1 - i) * 86400_000)
+    return `${d.getMonth() + 1}-${String(d.getDate()).padStart(2, '0')}`
   })
-  const avgY = CHART_H - (avg / max) * (CHART_H - 16)
-  return { list, avg, avgY, total, n }
 })
 
-const tipDate = (i: number): string => {
-  const d = new Date(Date.now() - (bars.value.n - 1 - i) * 86400_000)
-  return `${d.getMonth() + 1}-${String(d.getDate()).padStart(2, '0')}`
-}
-const tipLeft = (i: number): string => {
-  const ratio = (i + 0.5) / (bars.value.n || 1)
-  return `${Math.min(98, Math.max(2, ratio * 100))}%`
-}
-function onChartMove(e: MouseEvent): void {
-  const width = (e.currentTarget as HTMLElement).offsetWidth
-  hoverBar.value = Math.min(bars.value.n - 1, Math.floor((e.offsetX / width) * bars.value.n))
-}
+const trendTotal = computed(() => series.value.leads.reduce((a, b) => a + b, 0))
+const trendAvg = computed(() => trendTotal.value / (series.value.leads.length || 1))
 
 const chartDates = computed(() => {
-  const n = bars.value.n
-  return n ? `${tipDate(0)} — ${tipDate(n - 1)}` : ''
+  const d = trendDates.value
+  return d.length ? `${d[0]} — ${d[d.length - 1]}` : ''
 })
 
-function sparkPath(points: number[]): { line: string; area: string } {
-  const w = 120
-  const h = 26
-  if (!points.length) {
-    return { line: '', area: '' }
+/// 主走势图：每日线索量柱状（末日高亮）+ 均值虚线（markLine）
+const trendOption = computed(() => ({
+  grid: { left: 6, right: 12, top: 28, bottom: 2, containLabel: true },
+  tooltip: {
+    trigger: 'axis',
+    axisPointer: { type: 'shadow' },
+    backgroundColor: FG,
+    borderWidth: 0,
+    padding: [8, 10],
+    textStyle: { color: '#fff', fontSize: 11.5 },
+  },
+  xAxis: {
+    type: 'category',
+    data: trendDates.value,
+    axisTick: { show: false },
+    axisLine: { lineStyle: { color: BORDER } },
+    axisLabel: { color: MUTED, fontSize: 11 },
+  },
+  yAxis: {
+    type: 'value',
+    splitLine: { lineStyle: { color: BORDER } },
+    axisLabel: { color: MUTED, fontSize: 11 },
+  },
+  series: [
+    {
+      name: '每日线索量',
+      type: 'bar',
+      barMaxWidth: 26,
+      itemStyle: { borderRadius: [3, 3, 0, 0] as [number, number, number, number] },
+      // 最后一根（今天）用纯色高亮，其余用 40% 透明主色，与旧版视觉一致
+      data: series.value.leads.map((v, i, arr) => ({
+        value: v,
+        itemStyle: { color: i === arr.length - 1 ? ACCENT : ACCENT_BAR },
+      })),
+      markLine: {
+        silent: true,
+        symbol: 'none',
+        lineStyle: { color: MUTED, type: 'dashed', width: 1.2 },
+        label: { formatter: '均值 {c}', color: MUTED, fontSize: 10.5, position: 'insideEndTop' },
+        data: [{ yAxis: Math.round(trendAvg.value * 10) / 10 }],
+      },
+    },
+  ],
+}))
+
+/// 门店卡片迷你走势：无轴平滑面积线
+function sparkOption(points: number[]) {
+  return {
+    grid: { left: 0, right: 0, top: 2, bottom: 0 },
+    xAxis: { type: 'category', show: false, data: points.map((_, i) => i) },
+    yAxis: { type: 'value', show: false },
+    series: [
+      {
+        type: 'line',
+        data: points,
+        smooth: true,
+        symbol: 'none',
+        lineStyle: { color: 'oklch(18% 0.012 250 / 42%)', width: 1.4 },
+        areaStyle: { color: 'oklch(18% 0.012 250 / 6%)' },
+      },
+    ],
   }
-  const max = Math.max(...points)
-  const min = Math.min(...points)
-  const span = max - min || 1
-  const pts = points.map((p, i) => [
-    (i * w) / (points.length - 1 || 1),
-    h - 2 - ((p - min) / span) * (h - 7),
-  ])
-  const line = pts.map((p, i) => `${i ? 'L' : 'M'}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ')
-  const area = `${line} L${w},${h} L0,${h} Z`
-  return { line, area }
 }
 
 function pickStore(id: number): void {
@@ -237,41 +268,11 @@ onMounted(load)
           <p class="sub">每日新增线索量与 14 日均值</p>
         </div>
         <div class="chart-total">
-          <b>{{ (bars.total ?? 0).toLocaleString('zh-CN') }}</b>
-          <span>条 · 日均 <span>{{ Math.round(bars.avg ?? 0).toLocaleString('zh-CN') }}</span></span>
+          <b>{{ trendTotal.toLocaleString('zh-CN') }}</b>
+          <span>条 · 日均 <span>{{ Math.round(trendAvg).toLocaleString('zh-CN') }}</span></span>
         </div>
       </div>
-      <div class="chart" @mouseleave="hoverBar = -1" @mousemove="onChartMove">
-        <svg :viewBox="`0 0 ${CHART_W} ${CHART_H}`" preserveAspectRatio="none" role="img" aria-label="近 14 天每日新增线索量柱状图">
-          <line
-            v-for="i in 3"
-            :key="i"
-            x1="0"
-            :y1="(CHART_H / 4) * i"
-            :x2="CHART_W"
-            :y2="(CHART_H / 4) * i"
-            stroke="var(--border)"
-            stroke-width="1"
-            opacity="0.55"
-          />
-          <rect
-            v-for="(b, i) in bars.list"
-            :key="i"
-            class="bar"
-            :class="{ 'is-peak': i === bars.n - 1, 'is-hover': hoverBar === i }"
-            :x="b.x.toFixed(1)"
-            :y="b.y.toFixed(1)"
-            :width="b.w.toFixed(1)"
-            :height="b.h.toFixed(1)"
-            rx="3"
-          />
-          <line class="avg-line" x1="0" :y1="(bars.avgY ?? 0).toFixed(1)" :x2="CHART_W" :y2="(bars.avgY ?? 0).toFixed(1)" />
-        </svg>
-        <div v-if="hoverBar >= 0" class="chart-tip" :style="{ left: tipLeft(hoverBar) }">
-          <b>{{ tipDate(hoverBar) }}</b>
-          <span><i>线索</i>{{ bars.list[hoverBar]?.v ?? 0 }} 条</span>
-        </div>
-      </div>
+      <VChart class="chart" :option="trendOption" autoresize role="img" aria-label="近 14 天每日新增线索量柱状图" />
       <div class="chart-legend">
         <span><i class="swatch solid"></i>每日线索量</span>
         <span><i class="swatch dashed"></i>14 日均值</span>
@@ -310,10 +311,7 @@ onMounted(load)
             <span v-else class="num is-empty">—</span>
           </div>
           <p class="store-meta">{{ c.leads > 0 ? `线索 ${c.leads} · 消耗 ${yuan(c.spend)}` : '尚未拉取到线索' }}</p>
-          <svg class="spark" viewBox="0 0 120 26" preserveAspectRatio="none" aria-hidden="true">
-            <path class="spark-area" :d="sparkPath(c.trend).area" />
-            <path class="spark-line" :d="sparkPath(c.trend).line" />
-          </svg>
+          <VChart class="spark" :option="sparkOption(c.trend)" autoresize aria-hidden="true" />
           <p class="store-foot">
             {{
               c.session_ok === false
