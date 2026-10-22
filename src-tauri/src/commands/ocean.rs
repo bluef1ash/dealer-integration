@@ -98,7 +98,10 @@ pub async fn start_ocean_auth(
         .parse()
         .map_err(|_| "App ID 必须是数字".to_string())?;
 
-    open_browser(&ocean::authorize_url(ocean_app.app_id.trim()));
+    let authorize_link = ocean::authorize_url(ocean_app.app_id.trim());
+    // 留痕实际打开的链接，便于与开发者后台生成的官方授权链接比对排查
+    eprintln!("[OAuth] 打开授权链接: {authorize_link}");
+    open_browser(&authorize_link);
     let auth_code = wait_auth_code().await.map_err(err_string)?;
     let tokens = clients
         .ocean
