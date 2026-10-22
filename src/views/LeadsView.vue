@@ -2,9 +2,12 @@
 import { onMounted, ref, watch } from 'vue'
 import { api } from '../api'
 import LeadDrawer from '../components/LeadDrawer.vue'
-import { showToast, ui } from '../store'
+import { useUiStore } from '../stores/index.ts'
 import type { FetchState, LeadDetail, LeadPage, LeadsFilter } from '../types'
 import { fmtFull } from '../utils'
+
+const ui = useUiStore()
+const { showToast } = useUiStore()
 
 const PAGE_SIZE = 8
 const state = ref<FetchState>('loading')

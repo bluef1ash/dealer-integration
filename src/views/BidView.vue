@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { api } from '../api'
-import { showToast, ui } from '../store'
+import { useUiStore } from '../stores'
 import type { Dashboard as Dash } from '../types'
+
+const ui = useUiStore()
+const { showToast } = useUiStore()
 
 const dash = ref<Dash | null>(null)
 type BidRange = 'Today' | 'Last7' | 'Last30'

@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { api } from '../api'
-import { showToast, ui } from '../store'
+import { useUiStore } from '../stores'
 import type { Dashboard as Dash, FetchState, Range } from '../types'
 import { fmtTime, yuan } from '../utils'
+
+const ui = useUiStore()
+const { showToast } = useUiStore()
 
 const state = ref<FetchState>('loading')
 const dash = ref<Dash | null>(null)

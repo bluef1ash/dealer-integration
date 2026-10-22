@@ -3,9 +3,12 @@ import { listen } from '@tauri-apps/api/event'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { api } from '../api'
 import OceanAppsPanel from '../components/OceanAppsPanel.vue'
-import { showToast } from '../store'
+import { useUiStore } from '../stores/index.ts'
 import type { AdAccount, LoginEvent, SnapshotOutcome, StoreStatus } from '../types'
 import { fmtTime } from '../utils'
+import { dialog } from '../utils/dialog'
+
+const { showToast } = useUiStore()
 
 type SettingsTab = 'stores' | 'mapping' | 'ocean' | 'schedule' | 'data'
 const TABS: Array<{ key: SettingsTab; label: string }> = [
@@ -79,12 +82,21 @@ async function addStore(): Promise<void> {
   }
 }
 
-async function removeStore(s: StoreStatus): Promise<void> {
-  if (!window.confirm(`删除门店「${s.store.name}」？其登录凭证将一并清除。`)) {
-    return
-  }
-  await api.removeStore(s.store.id)
-  await refresh()
+function removeStore(s: StoreStatus): void {
+  dialog.warning({
+    title: '删除门店',
+    content: `删除门店「${s.store.name}」？其登录凭证将一并清除。`,
+    positiveText: '删除',
+    negativeText: '取消',
+    onPositiveClick: async () => {
+      try {
+        await api.removeStore(s.store.id)
+        await refresh()
+      } catch (e) {
+        showToast(`删除失败：${e}`)
+      }
+    },
+  })
 }
 
 async function startLogin(s: StoreStatus): Promise<void> {

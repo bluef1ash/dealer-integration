@@ -3,7 +3,7 @@ import { listen } from '@tauri-apps/api/event'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { api } from './api'
-import { showToast, ui, type ViewKey } from './store'
+import { useUiStore, type ViewKey } from './stores/index.ts'
 import type { PullOutcome, Store, StoreStatus } from './types'
 import { fmtTime } from './utils'
 import BidView from './views/BidView.vue'
@@ -44,6 +44,9 @@ const PAGE_HEAD: Record<ViewKey, { title: string; sub: string }> = {
   leads: { title: '线索明细', sub: '按时间、门店与状态查询线索' },
   settings: { title: '设置', sub: '门店账号、授权与采集调度' },
 }
+
+const ui = useUiStore()
+const { showToast } = useUiStore()
 
 const stores = ref<Store[]>([])
 const statuses = ref<StoreStatus[]>([])

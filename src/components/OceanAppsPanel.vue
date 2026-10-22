@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { api } from '../api'
-import { showToast } from '../store'
+import { useUiStore } from '../stores'
 import type { AdAccount, OceanAppStatus } from '../types'
 import { fmtTime } from '../utils'
+import { dialog } from '../utils/dialog'
+
+const { showToast } = useUiStore()
 
 const apps = ref<OceanAppStatus[]>([])
 const accounts = ref<AdAccount[]>([])
@@ -49,17 +52,22 @@ async function addApp(): Promise<void> {
   }
 }
 
-async function removeApp(a: OceanAppStatus): Promise<void> {
-  if (!window.confirm(`删除应用「${a.name}」？其授权 token 将一并清除，已拉取的报表数据保留。`)) {
-    return
-  }
-  try {
-    await api.removeOceanApp(a.id)
-    hint.value = `应用「${a.name}」已删除`
-    await refresh()
-  } catch (e) {
-    hint.value = `删除失败：${e}`
-  }
+function removeApp(a: OceanAppStatus): void {
+  dialog.warning({
+    title: '删除应用',
+    content: `删除应用「${a.name}」？其授权 token 将一并清除，已拉取的报表数据保留。`,
+    positiveText: '删除',
+    negativeText: '取消',
+    onPositiveClick: async () => {
+      try {
+        await api.removeOceanApp(a.id)
+        hint.value = `应用「${a.name}」已删除`
+        await refresh()
+      } catch (e) {
+        hint.value = `删除失败：${e}`
+      }
+    },
+  })
 }
 
 async function authorize(a: OceanAppStatus): Promise<void> {

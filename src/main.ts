@@ -1,4 +1,5 @@
 import { invoke } from '@tauri-apps/api/core'
+import { createPinia } from 'pinia'
 import { createApp } from 'vue'
 import './style.less'
 import App from './App.vue'
@@ -8,4 +9,4 @@ invoke<string>('ping', { name: 'dealer-integration' })
   .then((msg) => console.info(`[ipc] ${msg}`))
   .catch((err) => console.warn('[ipc] 冒烟调用失败', err))
 
-createApp(App).mount('#app')
+createApp(App).use(createPinia()).mount('#app')
